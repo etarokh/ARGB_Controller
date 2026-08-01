@@ -1,0 +1,7 @@
+*.before_*
+build/
+.vscode/
+.idea/
+*.bin
+*.elf
+*.map
