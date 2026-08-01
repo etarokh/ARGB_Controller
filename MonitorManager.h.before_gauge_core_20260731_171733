@@ -1,0 +1,37 @@
+#pragma once
+
+#include <Arduino.h>
+
+class LedManager;
+
+enum class MonitorPage {
+  Storage,
+  Cpu,
+  Network,
+  Services
+};
+
+class MonitorManager {
+public:
+  void begin(LedManager* ledManager);
+
+  void update();
+
+  void setEnabled(bool enabled);
+  bool isEnabled() const;
+
+  void resetToFirstPage();
+  void nextMonitorPage();
+
+  MonitorPage getMonitorPage() const;
+
+  const char* getMonitorPageName() const;
+
+private:
+  LedManager* leds = nullptr;
+
+  bool enabled = false;
+
+  MonitorPage currentPage =
+    MonitorPage::Storage;
+};

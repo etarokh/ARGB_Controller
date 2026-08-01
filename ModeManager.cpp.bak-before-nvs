@@ -1,0 +1,226 @@
+#include "ModeManager.h"
+#include "Config.h"
+
+void ModeManager::begin(
+  LedManager* ledManager,
+  EffectManager* monitoringManager,
+  DecorativeEffectManager* decorativeManager
+) {
+  leds = ledManager;
+  monitoring = monitoringManager;
+  decorative = decorativeManager;
+
+  currentMode = SystemMode::Off;
+
+  if (monitoring != nullptr) {
+    alertOverrideActive =
+      monitoring->hasActiveAlert();
+  } else {
+    alertOverrideActive = false;
+  }
+
+  applyMode();
+}
+
+void ModeManager::update() {
+  if (
+    alertSnoozeActive &&
+    millis() - alertSnoozeStartedAt >=
+      ALERT_SNOOZE_MS
+  ) {
+    alertSnoozeActive = false;
+
+    Serial.println(
+      "Alert snooze: EXPIRED"
+    );
+  }
+
+  bool newAlertOverride = false;
+
+  if (
+    monitoring != nullptr &&
+    !alertSnoozeActive
+  ) {
+    newAlertOverride =
+      monitoring->hasActiveAlert();
+  }
+
+  if (
+    newAlertOverride !=
+    alertOverrideActive
+  ) {
+    alertOverrideActive =
+      newAlertOverride;
+
+    applyMode();
+
+    if (alertOverrideActive) {
+      Serial.println(
+        "Alert override: ACTIVE"
+      );
+    } else {
+      Serial.println(
+        "Alert override: CLEARED"
+      );
+
+      Serial.print(
+        "Returning to user mode: "
+      );
+
+      Serial.println(
+        getModeName()
+      );
+    }
+  }
+
+  if (alertOverrideActive) {
+    if (monitoring != nullptr) {
+      monitoring->update();
+    }
+
+    return;
+  }
+
+  switch (currentMode) {
+    case SystemMode::Decorative:
+      if (decorative != nullptr) {
+        decorative->update();
+      }
+      break;
+
+    case SystemMode::Off:
+      break;
+  }
+}
+
+void ModeManager::setMode(
+  SystemMode mode
+) {
+  if (currentMode == mode) {
+    return;
+  }
+
+  currentMode = mode;
+
+  /*
+    هنگام وجود خطا، حالت انتخابی کاربر
+    ذخیره می‌شود ولی اخطار همچنان نمایش
+    داده خواهد شد.
+  */
+  applyMode();
+
+  Serial.print(
+    "User mode: "
+  );
+
+  Serial.println(
+    getModeName()
+  );
+}
+
+SystemMode ModeManager::getMode() const {
+  return currentMode;
+}
+
+void ModeManager::nextMode() {
+  switch (currentMode) {
+    case SystemMode::Decorative:
+      setMode(
+        SystemMode::Off
+      );
+      break;
+
+    case SystemMode::Off:
+      setMode(
+        SystemMode::Decorative
+      );
+      break;
+  }
+}
+
+bool ModeManager::
+isAlertOverrideActive() const {
+  return alertOverrideActive;
+}
+
+void ModeManager::snoozeAlertsFor24Hours() {
+  alertSnoozeActive = true;
+  alertSnoozeStartedAt = millis();
+
+  currentMode =
+    SystemMode::Decorative;
+
+  alertOverrideActive = false;
+
+  applyMode();
+
+  Serial.println(
+    "Alert snooze: ACTIVE for 24 hours"
+  );
+
+  Serial.println(
+    "Returning to user mode: DECORATIVE"
+  );
+}
+
+bool ModeManager::areAlertsSnoozed() const {
+  return alertSnoozeActive;
+}
+
+const char*
+ModeManager::getModeName() const {
+  switch (currentMode) {
+    case SystemMode::Decorative:
+      return "DECORATIVE";
+
+    case SystemMode::Off:
+      return "OFF";
+
+    default:
+      return "UNKNOWN";
+  }
+}
+
+void ModeManager::applyMode() {
+  if (monitoring != nullptr) {
+    monitoring->setEnabled(false);
+  }
+
+  if (decorative != nullptr) {
+    decorative->setEnabled(false);
+  }
+
+  if (leds != nullptr) {
+    leds->setBrightness(
+      DEFAULT_BRIGHTNESS
+    );
+
+    leds->clear();
+  }
+
+  /*
+    خطا همیشه بالاترین اولویت را دارد.
+  */
+  if (alertOverrideActive) {
+    if (monitoring != nullptr) {
+      monitoring->setEnabled(true);
+    }
+
+    return;
+  }
+
+  switch (currentMode) {
+    case SystemMode::Decorative:
+      if (decorative != nullptr) {
+        decorative->setEnabled(true);
+      }
+      break;
+
+    case SystemMode::Off:
+      /*
+        ESP32 فعال می‌ماند،
+        ولی LEDها خاموش هستند.
+      */
+      break;
+  }
+}

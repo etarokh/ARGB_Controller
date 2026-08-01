@@ -1,0 +1,90 @@
+#include "LedManager.h"
+
+// Physical wiring:
+//
+// Group 1 = GPIO14 = Intake
+// Group 2 = GPIO12 = Exhaust / Network
+// Group 3 = GPIO23 = HDD
+// Group 4 = GPIO22 = CPU
+
+void LedManager::begin() {
+
+  // Group 1: Intake fans
+  FastLED.addLeds<WS2812B, 14, GRB>(
+    intakeLeds,
+    LED_COUNT_INTAKE
+  );
+
+  // Group 2: Exhaust fans / Network monitoring
+  FastLED.addLeds<WS2812B, 12, GRB>(
+    exhaustLeds,
+    LED_COUNT_EXHAUST
+  );
+
+  // Group 3: HDD fan + HDD LED strip
+  FastLED.addLeds<WS2812B, 23, GRB>(
+    hddLeds,
+    LED_COUNT_HDD
+  );
+
+  // Group 4: CPU fans
+  FastLED.addLeds<WS2812B, 22, GRB>(
+    cpuLeds,
+    LED_COUNT_CPU
+  );
+
+  FastLED.setBrightness(DEFAULT_BRIGHTNESS);
+  FastLED.clear(true);
+}
+
+void LedManager::setAll(const CRGB& color) {
+  setIntake(color);
+  setExhaust(color);
+  setHdd(color);
+  setCpu(color);
+}
+
+void LedManager::setHdd(const CRGB& color) {
+  fill_solid(
+    hddLeds,
+    LED_COUNT_HDD,
+    color
+  );
+}
+
+void LedManager::setIntake(const CRGB& color) {
+  fill_solid(
+    intakeLeds,
+    LED_COUNT_INTAKE,
+    color
+  );
+}
+
+void LedManager::setExhaust(const CRGB& color) {
+  fill_solid(
+    exhaustLeds,
+    LED_COUNT_EXHAUST,
+    color
+  );
+}
+
+void LedManager::setCpu(const CRGB& color) {
+  fill_solid(
+    cpuLeds,
+    LED_COUNT_CPU,
+    color
+  );
+}
+
+void LedManager::show() {
+  FastLED.show();
+}
+
+void LedManager::clear() {
+  FastLED.clear();
+  FastLED.show();
+}
+
+void LedManager::setBrightness(uint8_t brightness) {
+  FastLED.setBrightness(brightness);
+}

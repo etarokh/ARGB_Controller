@@ -1,0 +1,114 @@
+#include "RainbowEffect.h"
+#include "SpeedCurve.h"
+
+void RainbowEffect::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+
+  setSpeed(50);
+
+  reset();
+}
+
+void RainbowEffect::update()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const unsigned long currentTime =
+    millis();
+
+  if (
+    currentTime - lastUpdateTime <
+      updateIntervalMs
+  )
+  {
+    return;
+  }
+
+  lastUpdateTime = currentTime;
+
+  baseHue += HUE_STEP;
+
+  const CRGB hddColor =
+    CHSV(
+      baseHue,
+      255,
+      255
+    );
+
+  const CRGB intakeColor =
+    CHSV(
+      baseHue + 64,
+      255,
+      255
+    );
+
+  const CRGB exhaustColor =
+    CHSV(
+      baseHue + 128,
+      255,
+      255
+    );
+
+  const CRGB cpuColor =
+    CHSV(
+      baseHue + 192,
+      255,
+      255
+    );
+
+  leds->setEffectBrightness(255);
+
+  leds->setHdd(hddColor);
+  leds->setIntake(intakeColor);
+  leds->setExhaust(exhaustColor);
+  leds->setCpu(cpuColor);
+
+  leds->show();
+}
+
+void RainbowEffect::reset()
+{
+  baseHue = 0;
+  lastUpdateTime = 0;
+}
+
+void RainbowEffect::setColor(
+  const CRGB& color
+)
+{
+  // Rainbow generates its own colors.
+}
+
+void RainbowEffect::setSpeed(
+  uint8_t speedPercent
+)
+{
+  speed = constrain(
+    speedPercent,
+    1,
+    100
+  );
+
+  updateInterval();
+}
+
+uint8_t RainbowEffect::getSpeed() const
+{
+  return speed;
+}
+
+void RainbowEffect::updateInterval()
+{
+  updateIntervalMs =
+    SpeedCurve::interval(
+      speed,
+      100,
+      5
+    );
+}

@@ -1,0 +1,133 @@
+#pragma once
+
+#include <Arduino.h>
+#include <FastLED.h>
+
+enum class RingAnimationPattern : uint8_t
+{
+  Fill = 0,
+  Spinner,
+  DualSpinner,
+  TripleSpinner,
+  KnightRider,
+  Expand,
+  Contract,
+  HalfRing,
+  Alternate,
+  PulseRing
+};
+
+class RingAnimationEngine
+{
+public:
+  static constexpr uint8_t LEDS_PER_RING = 8;
+
+  void begin();
+
+  void reset();
+
+  void setPattern(
+    RingAnimationPattern value
+  );
+
+  void setUpdateInterval(
+    unsigned long intervalMs
+  );
+
+  bool update();
+
+  void renderGroup(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+private:
+  RingAnimationPattern pattern =
+    RingAnimationPattern::Fill;
+
+  uint8_t phase = 0;
+
+  uint8_t progress = 0;
+
+  uint8_t hue = 0;
+
+  bool filling = true;
+
+  unsigned long lastUpdateTime = 0;
+
+  unsigned long updateIntervalMs = 120;
+
+  void updateFill();
+
+  void updateSpinner();
+
+  void renderFill(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+  void renderSpinner(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+  void renderDualSpinner(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+  void renderTripleSpinner(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+  void renderKnightRider(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+  void renderExpand(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+  void renderContract(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+  void renderHalfRing(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+  void renderAlternate(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+  void renderPulseRing(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+  void clearGroup(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+  void fillGroup(
+    CRGB* leds,
+    uint16_t ledCount,
+    const CRGB& color
+  ) const;
+
+  void drawPixel(
+    CRGB* leds,
+    uint16_t ledCount,
+    uint8_t ringPosition,
+    const CRGB& color
+  ) const;
+
+  CRGB getCurrentColor() const;
+};

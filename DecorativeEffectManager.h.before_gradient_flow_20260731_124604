@@ -1,0 +1,159 @@
+#pragma once
+
+#include <Arduino.h>
+#include <FastLED.h>
+
+#include "LedManager.h"
+#include "DecorativeEffect.h"
+#include "StaticColorEffect.h"
+#include "BreathingEffect.h"
+#include "RainbowEffect.h"
+#include "SpectrumWaveEffect.h"
+#include "TwinkleStarsEffect.h"
+#include "RowLedSyncEffect.h"
+#include "GroupFillWaveEffect.h"
+#include "CometEffect.h"
+#include "AlternatingStaticEffect.h"
+#include "ColorCycleEffect.h"
+#include "AuroraEffect.h"
+#include "OceanWaveEffect.h"
+#include "PaletteManager.h"
+
+enum class DecorativeEffectType
+{
+  StaticColor,
+  Rainbow,
+  SpectrumWave,
+  TwinkleStars,
+  RowLedSync,
+  GroupFillWave,
+  Comet,
+  AlternatingStatic,
+  Breathing,
+  ColorCycle,
+  Aurora,
+  OceanWave
+};
+
+class DecorativeEffectManager
+{
+public:
+  void begin(
+    LedManager* ledManager
+  );
+
+  void update();
+
+  void setEnabled(
+    bool enabled
+  );
+
+  bool isEnabled() const;
+
+  void setEffect(
+    DecorativeEffectType effect
+  );
+
+  DecorativeEffectType
+  getEffect() const;
+
+  void nextEffect();
+
+  void nextStaticColor();
+
+  void nextPattern();
+
+  const char* getPatternName() const;
+
+  const char* getStaticColorName() const;
+
+  void previousEffect();
+
+  const char* getEffectName() const;
+
+  void setColor(
+    const CRGB& color
+  );
+
+  void setPalette(
+    DecorativePaletteType paletteType
+  );
+
+  DecorativePaletteType
+  getPaletteType() const;
+
+  void nextPalette();
+
+  void previousPalette();
+
+  void setPaletteReversed(
+    bool reversed
+  );
+
+  void togglePaletteReversed();
+
+  bool isPaletteReversed() const;
+
+  const char* getPaletteName() const;
+
+  void setSpeed(
+    uint8_t speedPercent
+  );
+
+  uint8_t getSpeed() const;
+
+  void increaseSpeed(
+    uint8_t amount = 10
+  );
+
+  void decreaseSpeed(
+    uint8_t amount = 10
+  );
+
+  void clear();
+
+private:
+  static constexpr uint8_t EFFECT_COUNT = 12;
+
+  void selectCurrentEffect();
+
+  void applySpeedToEffects();
+
+  LedManager* leds = nullptr;
+
+  bool enabled = false;
+
+  uint8_t decorativeSpeed = 50;
+
+  DecorativeEffectType currentEffectType =
+    DecorativeEffectType::StaticColor;
+
+  DecorativeEffect* currentEffect =
+    nullptr;
+
+  PaletteManager paletteManager;
+
+  StaticColorEffect staticColorEffect;
+
+  BreathingEffect breathingEffect;
+
+  RainbowEffect rainbowEffect;
+
+  SpectrumWaveEffect spectrumWaveEffect;
+
+  TwinkleStarsEffect twinkleStarsEffect;
+
+  RowLedSyncEffect rowLedSyncEffect;
+
+  GroupFillWaveEffect groupFillWaveEffect;
+
+  CometEffect cometEffect;
+
+  AlternatingStaticEffect alternatingStaticEffect;
+
+  ColorCycleEffect colorCycleEffect;
+
+  AuroraEffect auroraEffect;
+
+  OceanWaveEffect oceanWaveEffect;
+};

@@ -1,0 +1,103 @@
+#include "StaticColorEffect.h"
+#include "Config.h"
+
+void StaticColorEffect::begin(
+  LedManager* ledManager
+) {
+  leds = ledManager;
+
+  colorIndex = 0;
+  applyCurrentColor();
+  needsRender = true;
+}
+
+void StaticColorEffect::update() {
+  if (leds == nullptr) {
+    return;
+  }
+
+  if (!needsRender) {
+    return;
+  }
+
+  leds->setEffectBrightness(
+    255
+  );
+
+  leds->setAll(effectColor);
+  leds->show();
+
+  needsRender = false;
+}
+
+void StaticColorEffect::reset() {
+  needsRender = true;
+}
+
+void StaticColorEffect::setColor(
+  const CRGB& color
+) {
+  effectColor = color;
+  needsRender = true;
+}
+
+void StaticColorEffect::nextColor()
+{
+  colorIndex++;
+
+  if (colorIndex >= COLOR_COUNT)
+  {
+    colorIndex = 0;
+  }
+
+  applyCurrentColor();
+  needsRender = true;
+}
+
+const char* StaticColorEffect::getColorName() const
+{
+  static const char* names[COLOR_COUNT] =
+  {
+    "Red",
+    "Orange",
+    "Amber",
+    "Yellow",
+    "Lime",
+    "Green",
+    "Mint",
+    "Cyan",
+    "Sky Blue",
+    "Blue",
+    "Indigo",
+    "Purple",
+    "Magenta",
+    "Pink",
+    "White"
+  };
+
+  return names[colorIndex];
+}
+
+void StaticColorEffect::applyCurrentColor()
+{
+  static const CRGB colors[COLOR_COUNT] =
+  {
+    CRGB::Red,
+    CRGB(255, 80, 0),
+    CRGB(255, 160, 0),
+    CRGB::Yellow,
+    CRGB(128, 255, 0),
+    CRGB::Green,
+    CRGB(0, 255, 128),
+    CRGB::Cyan,
+    CRGB(0, 160, 255),
+    CRGB::Blue,
+    CRGB(75, 0, 130),
+    CRGB::Purple,
+    CRGB::Magenta,
+    CRGB(255, 20, 147),
+    CRGB::White
+  };
+
+  effectColor = colors[colorIndex];
+}

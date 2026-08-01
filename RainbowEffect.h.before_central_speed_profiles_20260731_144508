@@ -1,0 +1,30 @@
+#pragma once
+
+#include <Arduino.h>
+#include <FastLED.h>
+
+#include "AnimatedHueEffect.h"
+
+class RainbowEffect :
+  public AnimatedHueEffect
+{
+protected:
+  void renderFrame() override;
+
+  uint32_t
+  getSlowestIntervalMs() const override
+  {
+    return 100;
+  }
+
+  uint32_t
+  getFastestIntervalMs() const override
+  {
+    return 5;
+  }
+
+  uint8_t getHueStep() const override
+  {
+    return 1;
+  }
+};

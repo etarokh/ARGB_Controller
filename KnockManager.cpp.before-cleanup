@@ -1,0 +1,35 @@
+#include "KnockManager.h"
+
+void KnockManager::begin() {
+    pinMode(PIN_KNOCK, INPUT);
+}
+
+void KnockManager::update() {
+
+    rawValue = analogRead(PIN_KNOCK);
+
+    if (rawValue > KNOCK_THRESHOLD) {
+
+        unsigned long now = millis();
+
+        // جلوگیری از چند بار تشخیص یک ضربه
+        if (now - lastKnockTime > 300) {
+            knockEvent = true;
+            lastKnockTime = now;
+        }
+    }
+}
+
+bool KnockManager::wasDetected() {
+
+    if (knockEvent) {
+        knockEvent = false;
+        return true;
+    }
+
+    return false;
+}
+
+int KnockManager::getRawValue() const {
+    return rawValue;
+}

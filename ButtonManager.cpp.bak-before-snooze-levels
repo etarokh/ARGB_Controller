@@ -1,0 +1,174 @@
+#include "ButtonManager.h"
+
+void ButtonManager::begin()
+{
+  pinMode(
+    PIN_BUTTON,
+    INPUT_PULLUP
+  );
+
+  lastReading =
+    digitalRead(PIN_BUTTON);
+
+  stableState =
+    lastReading;
+
+  pressedEvent = false;
+  doublePressedEvent = false;
+  longPressedEvent = false;
+  veryLongPressedEvent = false;
+
+  veryLongPressTriggered = false;
+  singleClickPending = false;
+}
+
+void ButtonManager::update()
+{
+  const unsigned long now =
+    millis();
+
+  bool currentReading =
+    digitalRead(PIN_BUTTON);
+
+  if (currentReading != lastReading)
+  {
+    lastDebounceTime =
+      now;
+  }
+
+  if (
+    now - lastDebounceTime >
+      BUTTON_DEBOUNCE_MS
+  )
+  {
+    if (currentReading != stableState)
+    {
+      stableState =
+        currentReading;
+
+      if (stableState == LOW)
+      {
+        pressStartTime =
+          now;
+
+        veryLongPressTriggered =
+          false;
+      }
+      else
+      {
+        unsigned long heldFor =
+          now - pressStartTime;
+
+        if (!veryLongPressTriggered)
+        {
+          if (heldFor >= LONG_PRESS_MS)
+          {
+            // A long press is never part of a click pair.
+            singleClickPending = false;
+
+            longPressedEvent =
+              true;
+          }
+          else
+          {
+            if (
+              singleClickPending &&
+              now - firstClickReleasedAt <=
+                DOUBLE_CLICK_MS
+            )
+            {
+              singleClickPending = false;
+
+              doublePressedEvent =
+                true;
+            }
+            else
+            {
+              singleClickPending = true;
+
+              firstClickReleasedAt =
+                now;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (
+    stableState == LOW &&
+    !veryLongPressTriggered &&
+    now - pressStartTime >=
+      VERY_LONG_PRESS_MS
+  )
+  {
+    veryLongPressTriggered =
+      true;
+
+    // A very long press is never part of a click pair.
+    singleClickPending = false;
+
+    veryLongPressedEvent =
+      true;
+  }
+
+  if (
+    singleClickPending &&
+    stableState == HIGH &&
+    now - firstClickReleasedAt >
+      DOUBLE_CLICK_MS
+  )
+  {
+    singleClickPending = false;
+
+    pressedEvent =
+      true;
+  }
+
+  lastReading =
+    currentReading;
+}
+
+bool ButtonManager::wasPressed()
+{
+  if (!pressedEvent)
+  {
+    return false;
+  }
+
+  pressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasDoublePressed()
+{
+  if (!doublePressedEvent)
+  {
+    return false;
+  }
+
+  doublePressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasLongPressed()
+{
+  if (!longPressedEvent)
+  {
+    return false;
+  }
+
+  longPressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasVeryLongPressed()
+{
+  if (!veryLongPressedEvent)
+  {
+    return false;
+  }
+
+  veryLongPressedEvent = false;
+  return true;
+}

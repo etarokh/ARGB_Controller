@@ -1,0 +1,940 @@
+#include "ButtonRouter.h"
+
+void ButtonRouter::begin(
+  ButtonManager* buttonManager,
+  BuzzerManager* buzzerManager,
+  LedManager* ledManager,
+  EffectManager* effectManager,
+  DecorativeEffectManager* decorativeManager,
+  SettingsManager* settingsMenuManager,
+  BrightnessManager* brightnessControlManager,
+  MonitorManager* monitorModeManager,
+  ModeManager* systemModeManager
+)
+{
+  button = buttonManager;
+  buzzer = buzzerManager;
+  leds = ledManager;
+  effects = effectManager;
+  decorative = decorativeManager;
+  settings = settingsMenuManager;
+  brightness = brightnessControlManager;
+  monitorManager = monitorModeManager;
+  modeManager = systemModeManager;
+}
+
+void ButtonRouter::update()
+{
+  if (
+    button == nullptr ||
+    modeManager == nullptr
+  )
+  {
+    return;
+  }
+
+  button->update();
+
+  const bool threshold24HourReached =
+    button->was24HourThresholdReached();
+
+  const bool threshold30DayReached =
+    button->was30DayThresholdReached();
+
+  const bool threshold6MonthReached =
+    button->was6MonthThresholdReached();
+
+  const bool snooze24HoursPress =
+    button->wasSnooze24HoursPressed();
+
+  const bool snooze30DaysPress =
+    button->wasSnooze30DaysPressed();
+
+  const bool snooze6MonthsPress =
+    button->wasSnooze6MonthsPressed();
+
+  const bool longPress =
+    button->wasLongPressed();
+
+  const bool doublePress =
+    button->wasDoublePressed();
+
+  const bool triplePress =
+    button->wasTriplePressed();
+
+  const bool quadruplePress =
+    button->wasQuadruplePressed();
+
+  const bool singlePress =
+    button->wasPressed();
+
+  if (isAlertContextActive())
+  {
+    handleAlertContext(
+      singlePress,
+      doublePress,
+      triplePress,
+      quadruplePress,
+      longPress,
+      snooze24HoursPress,
+      snooze30DaysPress,
+      snooze6MonthsPress,
+      threshold24HourReached,
+      threshold30DayReached,
+      threshold6MonthReached
+    );
+
+    return;
+  }
+
+  switch (modeManager->getMode())
+  {
+    case SystemMode::Decorative:
+      handleDecorativeContext(
+        singlePress,
+        doublePress,
+        triplePress,
+        quadruplePress,
+        longPress,
+        snooze24HoursPress,
+        snooze30DaysPress,
+        snooze6MonthsPress
+      );
+      break;
+
+    case SystemMode::Settings:
+      handleSettingsContext(
+        singlePress,
+        doublePress,
+        triplePress,
+        quadruplePress,
+        longPress,
+        snooze24HoursPress,
+        snooze30DaysPress,
+        snooze6MonthsPress
+      );
+      break;
+
+    case SystemMode::Monitor:
+      handleMonitorContext(
+        singlePress,
+        doublePress,
+        triplePress,
+        quadruplePress,
+        longPress,
+        snooze24HoursPress,
+        snooze30DaysPress,
+        snooze6MonthsPress
+      );
+      break;
+
+    case SystemMode::Off:
+      handleOffContext(
+        singlePress,
+        doublePress,
+        triplePress,
+        quadruplePress,
+        longPress,
+        snooze24HoursPress,
+        snooze30DaysPress,
+        snooze6MonthsPress
+      );
+      break;
+  }
+}
+
+bool ButtonRouter::isAlertContextActive() const
+{
+  if (
+    effects == nullptr ||
+    modeManager == nullptr
+  )
+  {
+    return false;
+  }
+
+  const uint8_t activeMask =
+    effects->getActiveAlertMask();
+
+  const uint8_t snoozedMask =
+    modeManager->getSnoozedAlertMask();
+
+  const uint8_t unsnoozedMask =
+    activeMask &
+    static_cast<uint8_t>(~snoozedMask);
+
+  return unsnoozedMask != 0;
+}
+
+void ButtonRouter::handleAlertContext(
+  bool singlePress,
+  bool doublePress,
+  bool triplePress,
+  bool quadruplePress,
+  bool longPress,
+  bool snooze24HoursPress,
+  bool snooze30DaysPress,
+  bool snooze6MonthsPress,
+  bool threshold24HourReached,
+  bool threshold30DayReached,
+  bool threshold6MonthReached
+)
+{
+  if (
+    buzzer == nullptr ||
+    effects == nullptr ||
+    modeManager == nullptr
+  )
+  {
+    return;
+  }
+
+  if (threshold24HourReached)
+  {
+    buzzer->beep(70);
+
+    Serial.println(
+      "BUTTON ALERT: 24-HOUR THRESHOLD"
+    );
+  }
+
+  if (threshold30DayReached)
+  {
+    buzzer->beep(70);
+    delay(90);
+    buzzer->beep(70);
+
+    Serial.println(
+      "BUTTON ALERT: 30-DAY THRESHOLD"
+    );
+  }
+
+  if (threshold6MonthReached)
+  {
+    buzzer->beep(70);
+    delay(90);
+    buzzer->beep(70);
+    delay(90);
+    buzzer->beep(70);
+
+    Serial.println(
+      "BUTTON ALERT: 6-MONTH THRESHOLD"
+    );
+  }
+
+  if (snooze6MonthsPress)
+  {
+    buzzer->mute(
+      effects->getCriticalAlertMask()
+    );
+
+    modeManager->snoozeAlertsFor6Months();
+
+    playSnoozeAnimation(
+      3,
+      10,
+      CRGB::Red
+    );
+
+    return;
+  }
+
+  if (snooze30DaysPress)
+  {
+    buzzer->mute(
+      effects->getCriticalAlertMask()
+    );
+
+    modeManager->snoozeAlertsFor30Days();
+
+    playSnoozeAnimation(
+      2,
+      6,
+      CRGB::Green
+    );
+
+    return;
+  }
+
+  if (snooze24HoursPress)
+  {
+    buzzer->mute(
+      effects->getCriticalAlertMask()
+    );
+
+    modeManager->snoozeAlertsFor24Hours();
+
+    playSnoozeAnimation(
+      1,
+      3,
+      CRGB::Green
+    );
+
+    return;
+  }
+
+  if (quadruplePress)
+  {
+    buzzer->beep(100);
+    delay(100);
+    buzzer->beep(250);
+
+    Serial.println(
+      "BUTTON ALERT: FOUR"
+    );
+
+    Serial.println(
+      "CLEAR_ACTIVE"
+    );
+
+    return;
+  }
+
+  if (singlePress)
+  {
+    if (effects->hasCriticalAlert())
+    {
+      buzzer->mute(
+        effects->getCriticalAlertMask()
+      );
+
+      Serial.println(
+        "BUZZER: Current Critical alerts muted"
+      );
+    }
+    else
+    {
+      Serial.println(
+        "BUTTON ALERT: SINGLE — NO ACTIVE BUZZER"
+      );
+    }
+  }
+
+  if (doublePress)
+  {
+    logReserved(
+      "ALERT",
+      "DOUBLE"
+    );
+  }
+
+  if (triplePress)
+  {
+    logReserved(
+      "ALERT",
+      "TRIPLE"
+    );
+  }
+
+  if (longPress)
+  {
+    logReserved(
+      "ALERT",
+      "LONG 1-3 SEC"
+    );
+  }
+}
+
+void ButtonRouter::handleDecorativeContext(
+  bool singlePress,
+  bool doublePress,
+  bool triplePress,
+  bool quadruplePress,
+  bool longPress,
+  bool snooze24HoursPress,
+  bool snooze30DaysPress,
+  bool snooze6MonthsPress
+)
+{
+  if (
+    button == nullptr ||
+    decorative == nullptr ||
+    brightness == nullptr
+  )
+  {
+    return;
+  }
+
+  const bool currentlyPressed =
+    button->isCurrentlyPressed();
+
+  const unsigned long holdDuration =
+    button->getCurrentHoldDuration();
+
+  const uint8_t pressNumber =
+    button->getCurrentPressNumber();
+
+  if (
+    decorativeAdjustment ==
+      DecorativeAdjustment::None &&
+    currentlyPressed &&
+    holdDuration >= 700UL
+  )
+  {
+    if (pressNumber == 1)
+    {
+      decorativeAdjustment =
+        DecorativeAdjustment::Brightness;
+
+      button->suppressCurrentPressRelease();
+
+      Serial.println(
+        "Decorative brightness adjustment started"
+      );
+    }
+    else if (pressNumber == 2)
+    {
+      decorativeAdjustment =
+        DecorativeAdjustment::Speed;
+
+      decorativeSpeedIncreasing = false;
+
+      lastDecorativeSpeedAdjustmentAt = 0;
+
+      button->suppressCurrentPressRelease();
+
+      Serial.println(
+        "Decorative speed adjustment started"
+      );
+    }
+  }
+
+  const bool brightnessAdjusting =
+    decorativeAdjustment ==
+      DecorativeAdjustment::Brightness &&
+    currentlyPressed;
+
+  brightness->updateAdjustment(
+    brightnessAdjusting
+  );
+
+  if (
+    decorativeAdjustment ==
+      DecorativeAdjustment::Speed &&
+    currentlyPressed
+  )
+  {
+    const unsigned long now =
+      millis();
+
+    if (
+      lastDecorativeSpeedAdjustmentAt == 0 ||
+      now - lastDecorativeSpeedAdjustmentAt >=
+        70UL
+    )
+    {
+      lastDecorativeSpeedAdjustmentAt = now;
+
+      const uint8_t previousSpeed =
+        decorative->getSpeed();
+
+      uint8_t currentSpeed =
+        previousSpeed;
+
+      const uint8_t speedStep = 5;
+
+      if (decorativeSpeedIncreasing)
+      {
+        if (
+          currentSpeed >=
+            100 - speedStep
+        )
+        {
+          currentSpeed = 100;
+        }
+        else
+        {
+          currentSpeed += speedStep;
+        }
+      }
+      else
+      {
+        if (
+          currentSpeed <=
+            1 + speedStep
+        )
+        {
+          currentSpeed = 1;
+        }
+        else
+        {
+          currentSpeed -= speedStep;
+        }
+      }
+
+      decorative->setSpeed(
+        currentSpeed
+      );
+
+      const bool reachedMaximum =
+        decorativeSpeedIncreasing &&
+        previousSpeed < 100 &&
+        currentSpeed == 100;
+
+      const bool reachedMinimum =
+        !decorativeSpeedIncreasing &&
+        previousSpeed > 1 &&
+        currentSpeed == 1;
+
+      if (
+        reachedMaximum ||
+        reachedMinimum
+      )
+      {
+        flashDecorativeSpeedBoundary();
+
+        decorativeSpeedIncreasing =
+          !decorativeSpeedIncreasing;
+      }
+    }
+  }
+
+  if (
+    decorativeAdjustment !=
+      DecorativeAdjustment::None &&
+    !currentlyPressed
+  )
+  {
+    if (
+      decorativeAdjustment ==
+        DecorativeAdjustment::Brightness
+    )
+    {
+      Serial.print(
+        "Decorative brightness selected: "
+      );
+
+      Serial.println(
+        brightness->getBrightness()
+      );
+    }
+    else
+    {
+      Serial.print(
+        "Decorative speed selected: "
+      );
+
+      Serial.print(
+        decorative->getSpeed()
+      );
+
+      Serial.println("%");
+    }
+
+    decorativeAdjustment =
+      DecorativeAdjustment::None;
+
+    lastDecorativeSpeedAdjustmentAt = 0;
+
+    return;
+  }
+
+  if (
+    singlePress &&
+    decorativeAdjustment ==
+      DecorativeAdjustment::None
+  )
+  {
+    if (
+      decorative->getEffect() ==
+        DecorativeEffectType::StaticColor
+    )
+    {
+      decorative->nextStaticColor();
+
+      printDecorativeStatus();
+    }
+    else if (
+      decorative->getEffect() ==
+        DecorativeEffectType::GroupFillWave ||
+      decorative->getEffect() ==
+        DecorativeEffectType::AlternatingStatic
+    )
+    {
+      decorative->nextPattern();
+
+      printDecorativeStatus();
+    }
+  }
+
+  if (
+    doublePress &&
+    decorativeAdjustment ==
+      DecorativeAdjustment::None
+  )
+  {
+    decorative->nextEffect();
+
+    printDecorativeStatus();
+  }
+
+  if (triplePress)
+  {
+    logReserved(
+      "DECORATIVE",
+      "TRIPLE"
+    );
+  }
+
+  if (quadruplePress)
+  {
+    logReserved(
+      "DECORATIVE",
+      "FOUR"
+    );
+  }
+
+  if (
+    longPress ||
+    snooze24HoursPress ||
+    snooze30DaysPress ||
+    snooze6MonthsPress
+  )
+  {
+    // Decorative hold gestures are handled live.
+  }
+}
+
+
+void ButtonRouter::
+flashDecorativeSpeedBoundary()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  // One blink at minimum or maximum speed.
+  leds->setEffectBrightness(0);
+  leds->show();
+  delay(100);
+
+  leds->setEffectBrightness(255);
+  leds->show();
+  delay(120);
+}
+
+void ButtonRouter::handleSettingsContext(
+  bool singlePress,
+  bool doublePress,
+  bool triplePress,
+  bool quadruplePress,
+  bool longPress,
+  bool snooze24HoursPress,
+  bool snooze30DaysPress,
+  bool snooze6MonthsPress
+)
+{
+  if (
+    singlePress &&
+    settings != nullptr
+  )
+  {
+    settings->nextItem();
+  }
+
+  if (doublePress)
+  {
+    logReserved(
+      "SETTINGS",
+      "DOUBLE"
+    );
+  }
+
+  if (triplePress)
+  {
+    logReserved(
+      "SETTINGS",
+      "TRIPLE"
+    );
+  }
+
+  if (quadruplePress)
+  {
+    logReserved(
+      "SETTINGS",
+      "FOUR"
+    );
+  }
+
+  if (longPress)
+  {
+    logReserved(
+      "SETTINGS",
+      "LONG"
+    );
+  }
+
+  if (snooze24HoursPress)
+  {
+    logReserved(
+      "SETTINGS",
+      "HOLD 3-6 SEC"
+    );
+  }
+
+  if (snooze30DaysPress)
+  {
+    logReserved(
+      "SETTINGS",
+      "HOLD 6-10 SEC"
+    );
+  }
+
+  if (snooze6MonthsPress)
+  {
+    logReserved(
+      "SETTINGS",
+      "HOLD 10+ SEC"
+    );
+  }
+}
+
+
+void ButtonRouter::handleMonitorContext(
+  bool singlePress,
+  bool doublePress,
+  bool triplePress,
+  bool quadruplePress,
+  bool longPress,
+  bool snooze24HoursPress,
+  bool snooze30DaysPress,
+  bool snooze6MonthsPress
+)
+{
+  if (
+    singlePress &&
+    monitorManager != nullptr
+  )
+  {
+    monitorManager->nextMonitorPage();
+  }
+
+  if (doublePress)
+  {
+    logReserved(
+      "MONITOR",
+      "DOUBLE"
+    );
+  }
+
+  if (triplePress)
+  {
+    logReserved(
+      "MONITOR",
+      "TRIPLE"
+    );
+  }
+
+  if (quadruplePress)
+  {
+    logReserved(
+      "MONITOR",
+      "FOUR"
+    );
+  }
+
+  if (longPress)
+  {
+    logReserved(
+      "MONITOR",
+      "LONG"
+    );
+  }
+
+  if (snooze24HoursPress)
+  {
+    logReserved(
+      "MONITOR",
+      "HOLD 3-6 SEC"
+    );
+  }
+
+  if (snooze30DaysPress)
+  {
+    logReserved(
+      "MONITOR",
+      "HOLD 6-10 SEC"
+    );
+  }
+
+  if (snooze6MonthsPress)
+  {
+    logReserved(
+      "MONITOR",
+      "HOLD 10+ SEC"
+    );
+  }
+}
+
+void ButtonRouter::handleOffContext(
+  bool singlePress,
+  bool doublePress,
+  bool triplePress,
+  bool quadruplePress,
+  bool longPress,
+  bool snooze24HoursPress,
+  bool snooze30DaysPress,
+  bool snooze6MonthsPress
+)
+{
+  if (singlePress)
+  {
+    logReserved(
+      "OFF",
+      "SINGLE"
+    );
+  }
+
+  if (doublePress)
+  {
+    logReserved(
+      "OFF",
+      "DOUBLE"
+    );
+  }
+
+  if (triplePress)
+  {
+    logReserved(
+      "OFF",
+      "TRIPLE"
+    );
+  }
+
+  if (quadruplePress)
+  {
+    logReserved(
+      "OFF",
+      "FOUR"
+    );
+  }
+
+  if (longPress)
+  {
+    logReserved(
+      "OFF",
+      "LONG"
+    );
+  }
+
+  if (snooze24HoursPress)
+  {
+    logReserved(
+      "OFF",
+      "HOLD 3-6 SEC"
+    );
+  }
+
+  if (snooze30DaysPress)
+  {
+    logReserved(
+      "OFF",
+      "HOLD 6-10 SEC"
+    );
+  }
+
+  if (snooze6MonthsPress)
+  {
+    logReserved(
+      "OFF",
+      "HOLD 10+ SEC"
+    );
+  }
+}
+
+void ButtonRouter::playSnoozeAnimation(
+  uint8_t beepCount,
+  uint8_t flashCount,
+  const CRGB& flashColor
+)
+{
+  if (
+    buzzer == nullptr ||
+    leds == nullptr
+  )
+  {
+    return;
+  }
+
+  for (uint8_t i = 0; i < beepCount; i++)
+  {
+    buzzer->beep(100);
+
+    if (i + 1 < beepCount)
+    {
+      delay(120);
+    }
+  }
+
+  for (uint8_t i = 0; i < flashCount; i++)
+  {
+    leds->setAll(flashColor);
+    leds->show();
+    delay(220);
+
+    leds->clear();
+    delay(180);
+  }
+}
+
+void ButtonRouter::printDecorativeStatus()
+{
+  if (decorative == nullptr)
+  {
+    return;
+  }
+
+  Serial.println();
+  Serial.println(
+    "Decorative status:"
+  );
+
+  Serial.print(
+    "Effect: "
+  );
+
+  Serial.println(
+    decorative->getEffectName()
+  );
+
+  Serial.print(
+    "Palette: "
+  );
+
+  Serial.println(
+    decorative->getPaletteName()
+  );
+
+  Serial.print(
+    "Speed: "
+  );
+
+  Serial.print(
+    decorative->getSpeed()
+  );
+
+  Serial.println("%");
+}
+
+void ButtonRouter::logReserved(
+  const char* context,
+  const char* gesture
+)
+{
+  Serial.print(
+    "BUTTON "
+  );
+
+  Serial.print(context);
+
+  Serial.print(
+    ": "
+  );
+
+  Serial.print(gesture);
+
+  Serial.println(
+    " — RESERVED"
+  );
+}

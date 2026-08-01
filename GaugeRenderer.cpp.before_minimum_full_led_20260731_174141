@@ -1,0 +1,103 @@
+#include "GaugeRenderer.h"
+
+void GaugeRenderer::render(
+  CRGB* leds,
+  uint16_t ledCount,
+  uint8_t percent,
+  const CRGB& gaugeColor,
+  const CRGB& backgroundColor
+) const
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  percent = constrain(
+    percent,
+    0,
+    100
+  );
+
+  /*
+   * Each physical fan group is wired in parallel.
+   * Therefore every group is treated as one logical
+   * eight-LED ring and the same positions repeat.
+   */
+  const uint16_t scaled =
+    static_cast<uint16_t>(
+      percent
+    ) *
+    LEDS_PER_RING;
+
+  const uint8_t fullLedCount =
+    scaled / 100;
+
+  uint8_t partialAmount =
+    static_cast<uint8_t>(
+      (
+        scaled % 100
+      ) *
+      255UL /
+      100UL
+    );
+
+  /*
+   * A very small percentage blended against white
+   * is nearly invisible. Keep the partial LED visibly
+   * colored whenever the Gauge value is above zero.
+   */
+  if (
+    percent > 0 &&
+    fullLedCount == 0 &&
+    partialAmount < 110
+  )
+  {
+    partialAmount = 110;
+  }
+
+  for (
+    uint16_t index = 0;
+    index < ledCount;
+    index++
+  )
+  {
+    const uint8_t ringPosition =
+      index % LEDS_PER_RING;
+
+    if (ringPosition < fullLedCount)
+    {
+      leds[index] = gaugeColor;
+    }
+    else if (
+      ringPosition == fullLedCount &&
+      fullLedCount < LEDS_PER_RING &&
+      partialAmount > 0
+    )
+    {
+      leds[index] =
+        blendBoundaryColor(
+          backgroundColor,
+          gaugeColor,
+          partialAmount
+        );
+    }
+    else
+    {
+      leds[index] = backgroundColor;
+    }
+  }
+}
+
+CRGB GaugeRenderer::blendBoundaryColor(
+  const CRGB& backgroundColor,
+  const CRGB& gaugeColor,
+  uint8_t amount
+) const
+{
+  return blend(
+    backgroundColor,
+    gaugeColor,
+    amount
+  );
+}

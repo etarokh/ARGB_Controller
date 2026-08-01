@@ -1,0 +1,386 @@
+#include "ModeManager.h"
+#include "Config.h"
+#include "esp_timer.h"
+
+void ModeManager::begin(
+  LedManager* ledManager,
+  EffectManager* monitoringManager,
+  DecorativeEffectManager* decorativeManager
+) {
+  leds = ledManager;
+  monitoring = monitoringManager;
+  decorative = decorativeManager;
+
+  currentMode = SystemMode::Off;
+
+  // Snooze is intentionally not persistent.
+  // A reboot must immediately allow alerts again.
+  alertSnoozeActive = false;
+  alertSnoozeUntilUnix = 0;
+  fallbackSnoozeStartedAtMs = 0;
+  alertSnoozeDurationMs = 0;
+  snoozedAlertMask = 0;
+
+  preferencesReady =
+    preferences.begin(
+      "argb-control",
+      false
+    );
+
+  if (preferencesReady) {
+    // Remove any snooze saved by older firmware.
+    preferences.remove(
+      "snooze_until"
+    );
+
+    Serial.println(
+      "Alert snooze reset after reboot"
+    );
+  }
+
+  if (
+    monitoring != nullptr &&
+    !alertSnoozeActive
+  ) {
+    alertOverrideActive =
+      monitoring->hasActiveAlert();
+  } else {
+    alertOverrideActive = false;
+  }
+
+  applyMode();
+}
+
+void ModeManager::update() {
+  bool snoozeExpired = false;
+
+  if (alertSnoozeActive) {
+    if (
+      (static_cast<uint64_t>(esp_timer_get_time()) / 1000ULL) -
+        fallbackSnoozeStartedAtMs >=
+          alertSnoozeDurationMs
+    ) {
+      snoozeExpired = true;
+    }
+
+    if (monitoring != nullptr) {
+      const uint8_t activeMask =
+        monitoring->getActiveAlertMask();
+
+      // هر Alert که پاک شده، دیگر Snooze محسوب نمی‌شود.
+      // اگر بعداً دوباره برگردد، Alert جدید خواهد بود.
+      snoozedAlertMask &= activeMask;
+
+      if (snoozedAlertMask == 0) {
+        clearStoredSnooze();
+      }
+    }
+  }
+
+  if (snoozeExpired) {
+    clearStoredSnooze();
+
+    Serial.println(
+      "Alert snooze: EXPIRED"
+    );
+  }
+
+  bool newAlertOverride = false;
+
+  if (monitoring != nullptr) {
+    const uint8_t activeMask =
+      monitoring->getActiveAlertMask();
+
+    const uint8_t unsnoozedMask =
+      activeMask &
+      static_cast<uint8_t>(~snoozedAlertMask);
+
+    newAlertOverride =
+      unsnoozedMask != 0;
+  }
+
+  if (
+    newAlertOverride !=
+    alertOverrideActive
+  ) {
+    alertOverrideActive =
+      newAlertOverride;
+
+    applyMode();
+
+    if (alertOverrideActive) {
+      Serial.println(
+        "Alert override: ACTIVE"
+      );
+    } else {
+      Serial.println(
+        "Alert override: CLEARED"
+      );
+
+      Serial.print(
+        "Returning to user mode: "
+      );
+
+      Serial.println(
+        getModeName()
+      );
+    }
+  }
+
+  if (alertOverrideActive) {
+    if (monitoring != nullptr) {
+      monitoring->update();
+    }
+
+    return;
+  }
+
+  switch (currentMode) {
+    case SystemMode::Decorative:
+      if (decorative != nullptr) {
+        decorative->update();
+      }
+      break;
+
+    case SystemMode::Function:
+      // Function rendering will be implemented later.
+      break;
+
+    case SystemMode::Off:
+      break;
+  }
+}
+
+void ModeManager::setMode(
+  SystemMode mode
+) {
+  if (currentMode == mode) {
+    return;
+  }
+
+  currentMode = mode;
+  applyMode();
+
+  Serial.print(
+    "User mode: "
+  );
+
+  Serial.println(
+    getModeName()
+  );
+}
+
+SystemMode ModeManager::getMode() const {
+  return currentMode;
+}
+
+void ModeManager::nextMode() {
+  switch (currentMode) {
+    case SystemMode::Decorative:
+      setMode(
+        SystemMode::Off
+      );
+      break;
+
+    case SystemMode::Function:
+      setMode(
+        SystemMode::Off
+      );
+      break;
+
+    case SystemMode::Off:
+      setMode(
+        SystemMode::Decorative
+      );
+      break;
+  }
+}
+
+bool ModeManager::
+isAlertOverrideActive() const {
+  return alertOverrideActive;
+}
+
+void ModeManager::setUnixTime(
+  uint64_t unixTime
+) {
+  if (unixTime < 1000000000ULL) {
+    return;
+  }
+
+  currentUnixTime = unixTime;
+  unixTimeValid = true;
+
+  if (
+    alertSnoozeActive &&
+    alertSnoozeUntilUnix > 0
+  ) {
+    if (
+      currentUnixTime >=
+      alertSnoozeUntilUnix
+    ) {
+      clearStoredSnooze();
+
+      Serial.println(
+        "Stored alert snooze has expired"
+      );
+    } else {
+      uint64_t remaining =
+        alertSnoozeUntilUnix -
+        currentUnixTime;
+
+      Serial.print(
+        "Alert snooze restored. Seconds remaining: "
+      );
+
+      Serial.println(
+        static_cast<unsigned long long>(
+          remaining
+        )
+      );
+    }
+  }
+}
+
+bool ModeManager::hasValidUnixTime() const {
+  return unixTimeValid;
+}
+
+void ModeManager::snoozeCurrentAlertsFor(
+  uint64_t durationMs,
+  const char* label
+) {
+  if (monitoring == nullptr) {
+    return;
+  }
+
+  snoozedAlertMask =
+    monitoring->getActiveAlertMask();
+
+  if (snoozedAlertMask == 0) {
+    return;
+  }
+
+  alertSnoozeActive = true;
+  alertSnoozeDurationMs = durationMs;
+  fallbackSnoozeStartedAtMs =
+    static_cast<uint64_t>(esp_timer_get_time()) /
+    1000ULL;
+
+  alertSnoozeUntilUnix = 0;
+
+  currentMode =
+    SystemMode::Decorative;
+
+  alertOverrideActive = false;
+
+  applyMode();
+
+  Serial.print(
+    "Alert snooze: ACTIVE for "
+  );
+
+  Serial.println(label);
+
+  Serial.print(
+    "Snoozed alert mask: 0x"
+  );
+
+  Serial.println(
+    snoozedAlertMask,
+    HEX
+  );
+}
+
+void ModeManager::snoozeAlertsFor24Hours() {
+  snoozeCurrentAlertsFor(
+    24ULL * 60ULL * 60ULL * 1000ULL,
+    "24 hours"
+  );
+}
+
+void ModeManager::snoozeAlertsFor30Days() {
+  snoozeCurrentAlertsFor(
+    30ULL * 24ULL * 60ULL * 60ULL * 1000ULL,
+    "30 days"
+  );
+}
+
+void ModeManager::snoozeAlertsFor6Months() {
+  snoozeCurrentAlertsFor(
+    180ULL * 24ULL * 60ULL * 60ULL * 1000ULL,
+    "6 months"
+  );
+}
+
+bool ModeManager::areAlertsSnoozed() const {
+  return alertSnoozeActive;
+}
+
+uint8_t ModeManager::getSnoozedAlertMask() const {
+  return snoozedAlertMask;
+}
+
+const char*
+ModeManager::getModeName() const {
+  switch (currentMode) {
+    case SystemMode::Decorative:
+      return "DECORATIVE";
+
+    case SystemMode::Function:
+      return "FUNCTION";
+
+    case SystemMode::Off:
+      return "OFF";
+
+    default:
+      return "UNKNOWN";
+  }
+}
+
+void ModeManager::clearStoredSnooze() {
+  alertSnoozeActive = false;
+  alertSnoozeUntilUnix = 0;
+  fallbackSnoozeStartedAtMs = 0;
+  alertSnoozeDurationMs = 0;
+  snoozedAlertMask = 0;
+
+  // Nothing is stored persistently.
+}
+
+void ModeManager::applyMode() {
+  if (monitoring != nullptr) {
+    monitoring->setEnabled(false);
+  }
+
+  if (decorative != nullptr) {
+    decorative->setEnabled(false);
+  }
+
+  if (leds != nullptr) {
+    leds->setBrightness(
+      DEFAULT_BRIGHTNESS
+    );
+
+    leds->clear();
+  }
+
+  if (alertOverrideActive) {
+    if (monitoring != nullptr) {
+      monitoring->setEnabled(true);
+    }
+
+    return;
+  }
+
+  switch (currentMode) {
+    case SystemMode::Decorative:
+      if (decorative != nullptr) {
+        decorative->setEnabled(true);
+      }
+      break;
+
+    case SystemMode::Off:
+      break;
+  }
+}

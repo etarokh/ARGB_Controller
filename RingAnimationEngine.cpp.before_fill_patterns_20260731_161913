@@ -1,0 +1,55 @@
+#include "RingAnimationEngine.h"
+
+void RingAnimationEngine::begin()
+{
+  reset();
+}
+
+void RingAnimationEngine::reset()
+{
+  progress = 0;
+}
+
+void RingAnimationEngine::setColor(
+  const CRGB& value
+)
+{
+  color = value;
+}
+
+void RingAnimationEngine::setProgress(
+  uint8_t value
+)
+{
+  progress = value;
+}
+
+void RingAnimationEngine::setPattern(
+  uint8_t value
+)
+{
+  pattern = value;
+}
+
+void RingAnimationEngine::renderRing(
+  CRGB* leds,
+  uint16_t ledCount
+)
+{
+  (void) pattern;
+  (void) progress;
+
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  for (
+    uint16_t index = 0;
+    index < ledCount;
+    index++
+  )
+  {
+    leds[index] = color;
+  }
+}

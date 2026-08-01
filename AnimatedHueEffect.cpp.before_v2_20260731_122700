@@ -1,0 +1,86 @@
+#include "AnimatedHueEffect.h"
+
+#include "SpeedCurve.h"
+
+void AnimatedHueEffect::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+
+  setSpeed(50);
+
+  reset();
+}
+
+void AnimatedHueEffect::update()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const unsigned long currentTime =
+    millis();
+
+  if (
+    currentTime - lastUpdateTime <
+      updateIntervalMs
+  )
+  {
+    return;
+  }
+
+  lastUpdateTime = currentTime;
+
+  baseHue += getHueStep();
+
+  renderFrame();
+
+  leds->show();
+}
+
+void AnimatedHueEffect::reset()
+{
+  baseHue = 0;
+
+  lastUpdateTime = 0;
+
+  onReset();
+}
+
+void AnimatedHueEffect::setColor(
+  const CRGB& color
+)
+{
+  // Hue-based effects generate their own colors.
+  (void)color;
+}
+
+void AnimatedHueEffect::setSpeed(
+  uint8_t speedPercent
+)
+{
+  speed = constrain(
+    speedPercent,
+    1,
+    100
+  );
+
+  updateInterval();
+}
+
+uint8_t AnimatedHueEffect::getSpeed() const
+{
+  return speed;
+}
+
+void AnimatedHueEffect::updateInterval()
+{
+  updateIntervalMs =
+    SpeedCurve::interval(
+      speed,
+      getSlowestIntervalMs(),
+      getFastestIntervalMs()
+    );
+}

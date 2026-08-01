@@ -1,0 +1,41 @@
+#include "StaticColorEffect.h"
+#include "Config.h"
+
+void StaticColorEffect::begin(
+  LedManager* ledManager
+) {
+  leds = ledManager;
+
+  effectColor = CRGB::Black;
+  needsRender = true;
+}
+
+void StaticColorEffect::update() {
+  if (leds == nullptr) {
+    return;
+  }
+
+  if (!needsRender) {
+    return;
+  }
+
+  leds->setEffectBrightness(
+    255
+  );
+
+  leds->setAll(effectColor);
+  leds->show();
+
+  needsRender = false;
+}
+
+void StaticColorEffect::reset() {
+  needsRender = true;
+}
+
+void StaticColorEffect::setColor(
+  const CRGB& color
+) {
+  effectColor = color;
+  needsRender = true;
+}

@@ -1,0 +1,379 @@
+#include <Arduino.h>
+
+#include "LedManager.h"
+#include "ButtonManager.h"
+#include "BuzzerManager.h"
+#include "KnockManager.h"
+#include "EffectManager.h"
+#include "DecorativeEffectManager.h"
+#include "ModeManager.h"
+#include "CommandParser.h"
+
+LedManager leds;
+ButtonManager button;
+BuzzerManager buzzer;
+KnockManager knock;
+EffectManager effects;
+DecorativeEffectManager decorativeEffects;
+ModeManager modeManager;
+CommandParser commandParser;
+
+uint8_t testStage = 0;
+
+void resetAllStates()
+{
+  effects.setNetworkState(
+    MonitorState::Normal
+  );
+
+  effects.setCpuState(
+    MonitorState::Normal
+  );
+
+  effects.setAllDisksState(
+    MonitorState::Normal
+  );
+}
+
+void applyTestStage()
+{
+  resetAllStates();
+
+  switch (testStage)
+  {
+    case 0:
+      Serial.println(
+        "TEST 0: All systems NORMAL"
+      );
+      break;
+
+    case 1:
+      effects.setDiskState(
+        0,
+        MonitorState::Warning
+      );
+
+      effects.setDiskState(
+        2,
+        MonitorState::Critical
+      );
+
+      Serial.println("TEST 1:");
+      Serial.println("BAY1 WARNING");
+      Serial.println("BAY3 CRITICAL");
+      break;
+
+    case 2:
+      effects.setDiskState(
+        0,
+        MonitorState::Warning
+      );
+
+      effects.setDiskState(
+        1,
+        MonitorState::Critical
+      );
+
+      effects.setDiskState(
+        3,
+        MonitorState::Warning
+      );
+
+      Serial.println("TEST 2:");
+      Serial.println("BAY1 WARNING");
+      Serial.println("BAY2 CRITICAL");
+      Serial.println("BAY4 WARNING");
+      break;
+
+    case 3:
+      effects.setDiskState(
+        0,
+        MonitorState::Critical
+      );
+
+      effects.setDiskState(
+        2,
+        MonitorState::Critical
+      );
+
+      effects.setDiskState(
+        3,
+        MonitorState::Critical
+      );
+
+      Serial.println("TEST 3:");
+      Serial.println(
+        "BAY1, BAY3, BAY4 CRITICAL"
+      );
+      break;
+
+    case 4:
+      effects.setDiskState(
+        1,
+        MonitorState::Offline
+      );
+
+      effects.setDiskState(
+        2,
+        MonitorState::Warning
+      );
+
+      effects.setDiskState(
+        3,
+        MonitorState::Critical
+      );
+
+      Serial.println("TEST 4:");
+      Serial.println("BAY2 OFFLINE");
+      Serial.println("BAY3 WARNING");
+      Serial.println("BAY4 CRITICAL");
+      break;
+
+    case 5:
+      effects.setNetworkState(
+        MonitorState::Offline
+      );
+
+      effects.setDiskState(
+        0,
+        MonitorState::Warning
+      );
+
+      effects.setDiskState(
+        2,
+        MonitorState::Critical
+      );
+
+      effects.setCpuState(
+        MonitorState::Critical
+      );
+
+      Serial.println("TEST 5:");
+      Serial.println("Network OFFLINE");
+      Serial.println("BAY1 WARNING");
+      Serial.println("BAY3 CRITICAL");
+      Serial.println("CPU CRITICAL");
+      break;
+  }
+}
+
+void printDecorativeStatus()
+{
+  Serial.println();
+  Serial.println(
+    "Decorative status:"
+  );
+
+  Serial.print(
+    "Effect: "
+  );
+
+  Serial.println(
+    decorativeEffects.getEffectName()
+  );
+
+  Serial.print(
+    "Palette: "
+  );
+
+  Serial.println(
+    decorativeEffects.getPaletteName()
+  );
+
+  Serial.print(
+    "Speed: "
+  );
+
+  Serial.print(
+    decorativeEffects.getSpeed()
+  );
+
+  Serial.println("%");
+}
+
+void setup()
+{
+  Serial.begin(115200);
+
+  leds.begin();
+  button.begin();
+  buzzer.begin();
+  knock.begin();
+
+  effects.begin(
+    &leds
+  );
+
+  effects.setDefaultColor(
+    CRGB::Blue
+  );
+
+  commandParser.begin(
+    &effects
+  );
+
+  decorativeEffects.begin(
+    &leds
+  );
+
+  decorativeEffects.setColor(
+    CRGB::Blue
+  );
+
+  decorativeEffects.setPalette(
+    DecorativePaletteType::Ocean
+  );
+
+  decorativeEffects.setSpeed(
+    35
+  );
+
+  decorativeEffects.setEffect(
+    DecorativeEffectType::StaticColor
+  );
+
+  applyTestStage();
+
+  modeManager.begin(
+    &leds,
+    &effects,
+    &decorativeEffects
+  );
+
+  modeManager.setMode(
+    SystemMode::Decorative
+  );
+
+  Serial.println();
+  Serial.println(
+    "Decorative control test"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Short button press:"
+  );
+
+  Serial.println(
+    "Next decorative effect"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Long button press:"
+  );
+
+  Serial.println(
+    "Next decorative palette"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Knock:"
+  );
+
+  Serial.println(
+    "Decoration <-> Off"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Effect order:"
+  );
+
+  Serial.println(
+    "1. Static Color"
+  );
+
+  Serial.println(
+    "2. Breathing"
+  );
+
+  Serial.println(
+    "3. Rainbow"
+  );
+
+  Serial.println(
+    "4. Color Cycle"
+  );
+
+  Serial.println(
+    "5. Aurora"
+  );
+
+  Serial.println(
+    "6. Ocean Wave"
+  );
+
+  printDecorativeStatus();
+}
+
+void loop()
+{
+  commandParser.update();
+
+  button.update();
+  knock.update();
+
+  bool veryLongButtonPress =
+    button.wasVeryLongPressed();
+
+  bool longButtonPress =
+    button.wasLongPressed();
+
+  bool shortButtonPress =
+    button.wasPressed();
+
+  bool anyAlertActive =
+    effects.hasActiveAlert();
+
+  if (
+    veryLongButtonPress &&
+    anyAlertActive
+  )
+  {
+    buzzer.mute();
+
+    modeManager.snoozeAlertsFor24Hours();
+  }
+  else if (
+    effects.hasCriticalAlert() &&
+    (longButtonPress || shortButtonPress)
+  )
+  {
+    buzzer.mute();
+
+    Serial.println(
+      "BUZZER: Muted until Critical clears"
+    );
+  }
+  else if (longButtonPress)
+  {
+    decorativeEffects.nextPalette();
+
+    printDecorativeStatus();
+  }
+  else if (shortButtonPress)
+  {
+    decorativeEffects.nextEffect();
+
+    printDecorativeStatus();
+  }
+
+  bool audibleCriticalActive =
+    effects.hasCriticalAlert() &&
+    !modeManager.areAlertsSnoozed();
+
+  buzzer.update(
+    audibleCriticalActive
+  );
+
+  if (knock.wasDetected())
+  {
+    modeManager.nextMode();
+  }
+
+  modeManager.update();
+
+  delay(5);
+}

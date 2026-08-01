@@ -1,0 +1,117 @@
+#include "ButtonManager.h"
+
+void ButtonManager::begin()
+{
+  pinMode(
+    PIN_BUTTON,
+    INPUT_PULLUP
+  );
+
+  lastReading =
+    digitalRead(PIN_BUTTON);
+
+  stableState =
+    lastReading;
+}
+
+void ButtonManager::update()
+{
+  bool currentReading =
+    digitalRead(PIN_BUTTON);
+
+  if (currentReading != lastReading)
+  {
+    lastDebounceTime =
+      millis();
+  }
+
+  if (
+    millis() - lastDebounceTime >
+    BUTTON_DEBOUNCE_MS
+  )
+  {
+    if (currentReading != stableState)
+    {
+      stableState =
+        currentReading;
+
+      if (stableState == LOW)
+      {
+        pressStartTime =
+          millis();
+
+        veryLongPressTriggered =
+          false;
+      }
+      else
+      {
+        unsigned long heldFor =
+          millis() - pressStartTime;
+
+        if (!veryLongPressTriggered)
+        {
+          if (heldFor >= LONG_PRESS_MS)
+          {
+            longPressedEvent =
+              true;
+          }
+          else
+          {
+            pressedEvent =
+              true;
+          }
+        }
+      }
+    }
+  }
+
+  if (
+    stableState == LOW &&
+    !veryLongPressTriggered &&
+    millis() - pressStartTime >=
+      VERY_LONG_PRESS_MS
+  )
+  {
+    veryLongPressTriggered =
+      true;
+
+    veryLongPressedEvent =
+      true;
+  }
+
+  lastReading =
+    currentReading;
+}
+
+bool ButtonManager::wasPressed()
+{
+  if (!pressedEvent)
+  {
+    return false;
+  }
+
+  pressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasLongPressed()
+{
+  if (!longPressedEvent)
+  {
+    return false;
+  }
+
+  longPressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasVeryLongPressed()
+{
+  if (!veryLongPressedEvent)
+  {
+    return false;
+  }
+
+  veryLongPressedEvent = false;
+  return true;
+}

@@ -1,0 +1,118 @@
+#include "ButtonManager.h"
+
+void ButtonManager::begin()
+{
+  pinMode(
+    PIN_BUTTON,
+    INPUT_PULLUP
+  );
+
+  lastReading =
+    digitalRead(
+      PIN_BUTTON
+    );
+
+  stableState =
+    lastReading;
+}
+
+void ButtonManager::update()
+{
+  bool currentReading =
+    digitalRead(
+      PIN_BUTTON
+    );
+
+  if (
+    currentReading !=
+    lastReading
+  )
+  {
+    lastDebounceTime =
+      millis();
+  }
+
+  if (
+    millis() -
+      lastDebounceTime >
+    BUTTON_DEBOUNCE_MS
+  )
+  {
+    if (
+      currentReading !=
+      stableState
+    )
+    {
+      stableState =
+        currentReading;
+
+      if (
+        stableState ==
+        LOW
+      )
+      {
+        pressStartTime =
+          millis();
+
+        longPressTriggered =
+          false;
+      }
+      else
+      {
+        if (
+          !longPressTriggered
+        )
+        {
+          pressedEvent =
+            true;
+        }
+      }
+    }
+  }
+
+  if (
+    stableState == LOW &&
+    !longPressTriggered
+  )
+  {
+    if (
+      millis() -
+        pressStartTime >=
+      LONG_PRESS_MS
+    )
+    {
+      longPressTriggered =
+        true;
+
+      longPressedEvent =
+        true;
+    }
+  }
+
+  lastReading =
+    currentReading;
+}
+
+bool ButtonManager::wasPressed()
+{
+  if (!pressedEvent)
+  {
+    return false;
+  }
+
+  pressedEvent = false;
+
+  return true;
+}
+
+bool ButtonManager::wasLongPressed()
+{
+  if (!longPressedEvent)
+  {
+    return false;
+  }
+
+  longPressedEvent = false;
+
+  return true;
+}

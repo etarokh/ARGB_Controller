@@ -1,0 +1,229 @@
+#include "AnimatedHueEffect.h"
+
+#include "Config.h"
+#include "SpeedCurve.h"
+
+void AnimatedHueEffect::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+
+  setSpeed(50);
+
+  reset();
+}
+
+void AnimatedHueEffect::update()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const unsigned long currentTime =
+    millis();
+
+  if (
+    currentTime - lastUpdateTime <
+      updateIntervalMs
+  )
+  {
+    return;
+  }
+
+  lastUpdateTime = currentTime;
+
+  beforeFrame();
+
+  if (shouldAdvanceHue())
+  {
+    baseHue += getHueStep();
+  }
+
+  renderFrame();
+
+  afterFrame();
+
+  leds->show();
+}
+
+void AnimatedHueEffect::reset()
+{
+  baseHue = 0;
+
+  lastUpdateTime = 0;
+
+  onReset();
+}
+
+void AnimatedHueEffect::setColor(
+  const CRGB& color
+)
+{
+  // Hue-based effects generate their own colors.
+  (void)color;
+}
+
+void AnimatedHueEffect::setSpeed(
+  uint8_t speedPercent
+)
+{
+  speed = constrain(
+    speedPercent,
+    1,
+    100
+  );
+
+  updateInterval();
+}
+
+uint8_t AnimatedHueEffect::getSpeed() const
+{
+  return speed;
+}
+
+CRGB AnimatedHueEffect::hsvColor(
+  uint8_t hueOffset,
+  uint8_t saturation,
+  uint8_t value
+) const
+{
+  return CHSV(
+    baseHue + hueOffset,
+    saturation,
+    value
+  );
+}
+
+CRGB* AnimatedHueEffect::getGroupLeds(
+  uint8_t groupIndex
+) const
+{
+  if (leds == nullptr)
+  {
+    return nullptr;
+  }
+
+  switch (groupIndex)
+  {
+    case 0:
+      return leds->getHddLeds();
+
+    case 1:
+      return leds->getCpuLeds();
+
+    case 2:
+      return leds->getIntakeLeds();
+
+    case 3:
+      return leds->getExhaustLeds();
+
+    default:
+      return nullptr;
+  }
+}
+
+uint16_t AnimatedHueEffect::getGroupLedCount(
+  uint8_t groupIndex
+) const
+{
+  switch (groupIndex)
+  {
+    case 0:
+      return LED_COUNT_HDD;
+
+    case 1:
+      return LED_COUNT_CPU;
+
+    case 2:
+      return LED_COUNT_INTAKE;
+
+    case 3:
+      return LED_COUNT_EXHAUST;
+
+    default:
+      return 0;
+  }
+}
+
+void AnimatedHueEffect::fillGroup(
+  uint8_t groupIndex,
+  const CRGB& color
+)
+{
+  CRGB* groupLeds =
+    getGroupLeds(
+      groupIndex
+    );
+
+  const uint16_t ledCount =
+    getGroupLedCount(
+      groupIndex
+    );
+
+  if (groupLeds == nullptr)
+  {
+    return;
+  }
+
+  for (
+    uint16_t ledIndex = 0;
+    ledIndex < ledCount;
+    ledIndex++
+  )
+  {
+    groupLeds[ledIndex] = color;
+  }
+}
+
+void AnimatedHueEffect::setGroupPixel(
+  uint8_t groupIndex,
+  uint16_t pixelIndex,
+  const CRGB& color
+)
+{
+  CRGB* groupLeds =
+    getGroupLeds(
+      groupIndex
+    );
+
+  const uint16_t ledCount =
+    getGroupLedCount(
+      groupIndex
+    );
+
+  if (
+    groupLeds == nullptr ||
+    pixelIndex >= ledCount
+  )
+  {
+    return;
+  }
+
+  groupLeds[pixelIndex] = color;
+}
+
+void AnimatedHueEffect::clearAllGroups()
+{
+  for (
+    uint8_t groupIndex = 0;
+    groupIndex < GROUP_COUNT;
+    groupIndex++
+  )
+  {
+    fillGroup(
+      groupIndex,
+      CRGB::Black
+    );
+  }
+}
+
+void AnimatedHueEffect::updateInterval()
+{
+  updateIntervalMs =
+    SpeedCurve::interval(
+      speed,
+      SpeedProfile::AnimatedHue
+    );
+}

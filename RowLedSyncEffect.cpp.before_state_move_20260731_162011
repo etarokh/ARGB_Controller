@@ -1,0 +1,219 @@
+#include "RowLedSyncEffect.h"
+#include "SpeedCurve.h"
+#include "Config.h"
+
+void RowLedSyncEffect::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+
+  animationEngine.begin();
+
+  setSpeed(50);
+
+  reset();
+}
+
+void RowLedSyncEffect::update()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const unsigned long currentTime =
+    millis();
+
+  if (
+    currentTime - lastUpdateTime <
+      updateIntervalMs
+  )
+  {
+    return;
+  }
+
+  lastUpdateTime = currentTime;
+
+  if (filling)
+  {
+    if (
+      filledLedCount <
+      RingAnimationEngine::LEDS_PER_RING
+    )
+    {
+      filledLedCount++;
+    }
+    else
+    {
+      filling = false;
+    }
+  }
+  else
+  {
+    if (filledLedCount > 0)
+    {
+      filledLedCount--;
+    }
+    else
+    {
+      filling = true;
+
+      hue += 17;
+    }
+  }
+
+  render();
+}
+
+void RowLedSyncEffect::reset()
+{
+  filledLedCount = 0;
+
+  filling = true;
+
+  hue = 0;
+
+  lastUpdateTime = 0;
+
+  animationEngine.reset();
+
+  render();
+}
+
+void RowLedSyncEffect::setColor(
+  const CRGB& color
+)
+{
+  (void) color;
+}
+
+void RowLedSyncEffect::setSpeed(
+  uint8_t speedPercent
+)
+{
+  speed = constrain(
+    speedPercent,
+    1,
+    100
+  );
+
+  updateInterval();
+}
+
+uint8_t RowLedSyncEffect::getSpeed() const
+{
+  return speed;
+}
+
+void RowLedSyncEffect::nextPattern()
+{
+  patternIndex++;
+
+  if (patternIndex >= PATTERN_COUNT)
+  {
+    patternIndex = 0;
+  }
+
+  filledLedCount = 0;
+
+  filling = true;
+
+  lastUpdateTime = 0;
+
+  animationEngine.reset();
+
+  render();
+
+  Serial.print(
+    "Row LED Sync pattern: "
+  );
+
+  Serial.println(
+    getPatternName()
+  );
+}
+
+uint8_t RowLedSyncEffect::getPattern() const
+{
+  return patternIndex;
+}
+
+const char*
+RowLedSyncEffect::getPatternName() const
+{
+  switch (patternIndex)
+  {
+    case 0:
+      return "Forward Fill";
+
+    case 1:
+      return "Reverse Fill";
+
+    case 2:
+      return "Center Out";
+
+    case 3:
+      return "Outside In";
+
+    default:
+      return "Unknown";
+  }
+}
+
+void RowLedSyncEffect::render()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  animationEngine.setPattern(
+    patternIndex
+  );
+
+  animationEngine.setProgress(
+    filledLedCount
+  );
+
+  animationEngine.setColor(
+    CHSV(
+      hue,
+      255,
+      255
+    )
+  );
+
+  animationEngine.renderRingGroup(
+    leds->getHddLeds(),
+    LED_COUNT_HDD
+  );
+
+  animationEngine.renderRingGroup(
+    leds->getIntakeLeds(),
+    LED_COUNT_INTAKE
+  );
+
+  animationEngine.renderRingGroup(
+    leds->getExhaustLeds(),
+    LED_COUNT_EXHAUST
+  );
+
+  animationEngine.renderRingGroup(
+    leds->getCpuLeds(),
+    LED_COUNT_CPU
+  );
+
+  leds->setEffectBrightness(255);
+
+  leds->show();
+}
+
+void RowLedSyncEffect::updateInterval()
+{
+  updateIntervalMs =
+    SpeedCurve::interval(
+      speed,
+      SpeedProfile::RowLedSync
+    );
+}

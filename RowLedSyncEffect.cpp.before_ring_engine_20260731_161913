@@ -1,0 +1,283 @@
+#include "RowLedSyncEffect.h"
+#include "SpeedCurve.h"
+#include "Config.h"
+
+void RowLedSyncEffect::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+
+  setSpeed(50);
+
+  reset();
+}
+
+void RowLedSyncEffect::update()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const unsigned long currentTime =
+    millis();
+
+  if (
+    currentTime - lastUpdateTime <
+      updateIntervalMs
+  )
+  {
+    return;
+  }
+
+  lastUpdateTime = currentTime;
+
+  if (filling)
+  {
+    if (filledLedCount < LEDS_PER_FAN)
+    {
+      filledLedCount++;
+    }
+    else
+    {
+      filling = false;
+    }
+  }
+  else
+  {
+    if (filledLedCount > 0)
+    {
+      filledLedCount--;
+    }
+    else
+    {
+      filling = true;
+
+      hue += 17;
+    }
+  }
+
+  render();
+}
+
+void RowLedSyncEffect::reset()
+{
+  filledLedCount = 0;
+
+  filling = true;
+
+  hue = 0;
+
+  lastUpdateTime = 0;
+
+  render();
+}
+
+void RowLedSyncEffect::setColor(
+  const CRGB& color
+)
+{
+  // This effect generates its own colors.
+}
+
+void RowLedSyncEffect::setSpeed(
+  uint8_t speedPercent
+)
+{
+  speed = constrain(
+    speedPercent,
+    1,
+    100
+  );
+
+  updateInterval();
+}
+
+uint8_t RowLedSyncEffect::getSpeed() const
+{
+  return speed;
+}
+
+
+void RowLedSyncEffect::nextPattern()
+{
+  patternIndex++;
+
+  if (patternIndex >= PATTERN_COUNT)
+  {
+    patternIndex = 0;
+  }
+
+  filledLedCount = 0;
+  filling = true;
+  lastUpdateTime = 0;
+
+  render();
+
+  Serial.print(
+    "Row LED Sync pattern: "
+  );
+
+  Serial.println(
+    getPatternName()
+  );
+}
+
+uint8_t RowLedSyncEffect::getPattern() const
+{
+  return patternIndex;
+}
+
+const char*
+RowLedSyncEffect::getPatternName() const
+{
+  switch (patternIndex)
+  {
+    case 0:
+      return "Forward Fill";
+
+    case 1:
+      return "Reverse Fill";
+
+    case 2:
+      return "Center Out";
+
+    case 3:
+      return "Outside In";
+
+    default:
+      return "Unknown";
+  }
+}
+
+void RowLedSyncEffect::render()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const CRGB color =
+    CHSV(
+      hue,
+      255,
+      255
+    );
+
+  renderGroup(
+    leds->getHddLeds(),
+    LED_COUNT_HDD,
+    color
+  );
+
+  renderGroup(
+    leds->getIntakeLeds(),
+    LED_COUNT_INTAKE,
+    color
+  );
+
+  renderGroup(
+    leds->getExhaustLeds(),
+    LED_COUNT_EXHAUST,
+    color
+  );
+
+  renderGroup(
+    leds->getCpuLeds(),
+    LED_COUNT_CPU,
+    color
+  );
+
+  leds->setEffectBrightness(255);
+  leds->show();
+}
+
+void RowLedSyncEffect::renderGroup(
+  CRGB* groupLeds,
+  uint16_t ledCount,
+  const CRGB& color
+)
+{
+  if (groupLeds == nullptr)
+  {
+    return;
+  }
+
+  for (
+    uint16_t index = 0;
+    index < ledCount;
+    index++
+  )
+  {
+    const uint8_t ledPosition =
+      index % LEDS_PER_FAN;
+
+    const uint8_t fillOrder =
+      getFillOrder(
+        ledPosition
+      );
+
+    if (fillOrder < filledLedCount)
+    {
+      groupLeds[index] = color;
+    }
+    else
+    {
+      groupLeds[index] = CRGB::Black;
+    }
+  }
+}
+
+uint8_t RowLedSyncEffect::getFillOrder(
+  uint8_t ledPosition
+) const
+{
+  static const uint8_t CENTER_OUT_ORDER[
+    LEDS_PER_FAN
+  ] =
+  {
+    6, 4, 2, 0, 1, 3, 5, 7
+  };
+
+  static const uint8_t OUTSIDE_IN_ORDER[
+    LEDS_PER_FAN
+  ] =
+  {
+    0, 2, 4, 6, 7, 5, 3, 1
+  };
+
+  switch (patternIndex)
+  {
+    case 0:
+      return ledPosition;
+
+    case 1:
+      return
+        LEDS_PER_FAN -
+        1 -
+        ledPosition;
+
+    case 2:
+      return CENTER_OUT_ORDER[
+        ledPosition
+      ];
+
+    case 3:
+      return OUTSIDE_IN_ORDER[
+        ledPosition
+      ];
+
+    default:
+      return ledPosition;
+  }
+}
+
+void RowLedSyncEffect::updateInterval()
+{
+  updateIntervalMs =
+    SpeedCurve::interval(
+      speed,
+      SpeedProfile::RowLedSync
+    );
+}

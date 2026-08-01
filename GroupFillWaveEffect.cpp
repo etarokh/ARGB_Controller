@@ -1,0 +1,412 @@
+#include "GroupFillWaveEffect.h"
+
+#include "Config.h"
+#include "SpeedCurve.h"
+
+void GroupFillWaveEffect::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+
+  setSpeed(50);
+
+  reset();
+}
+
+void GroupFillWaveEffect::update()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const unsigned long currentTime =
+    millis();
+
+  if (
+    currentTime - lastUpdateTime <
+      updateIntervalMs
+  )
+  {
+    return;
+  }
+
+  lastUpdateTime = currentTime;
+
+  if (phase == Phase::Filling)
+  {
+    stepFill();
+  }
+  else
+  {
+    stepEmpty();
+  }
+
+  leds->show();
+}
+
+void GroupFillWaveEffect::reset()
+{
+  phase = Phase::Filling;
+
+  currentGroup = 0;
+
+  currentLed = 0;
+
+  colorPosition = 0;
+
+  lastUpdateTime = 0;
+
+  clearAllPixels();
+
+  if (leds != nullptr)
+  {
+      leds->show();
+  }
+}
+
+void GroupFillWaveEffect::setColor(
+  const CRGB& color
+)
+{
+  // This effect gets its colors from PaletteManager.
+  (void)color;
+}
+
+void GroupFillWaveEffect::setSpeed(
+  uint8_t speedPercent
+)
+{
+  speed = constrain(
+    speedPercent,
+    1,
+    100
+  );
+
+  updateInterval();
+}
+
+uint8_t GroupFillWaveEffect::getSpeed() const
+{
+  return speed;
+}
+
+void GroupFillWaveEffect::setPaletteManager(
+  PaletteManager* manager
+)
+{
+  paletteManager = manager;
+}
+
+void GroupFillWaveEffect::nextPattern()
+{
+  startGroup++;
+
+  if (startGroup >= GROUP_COUNT)
+  {
+    startGroup = 0;
+  }
+
+  phase = Phase::Filling;
+
+  currentGroup = 0;
+
+  currentLed = 0;
+
+  lastUpdateTime = 0;
+
+  clearAllPixels();
+
+  if (leds != nullptr)
+  {
+      leds->show();
+  }
+
+  Serial.print(
+    "Group Fill pattern: "
+  );
+
+  Serial.println(
+    getPatternName()
+  );
+}
+
+uint8_t GroupFillWaveEffect::getPattern() const
+{
+  return startGroup;
+}
+
+const char*
+GroupFillWaveEffect::getPatternName() const
+{
+  switch (startGroup)
+  {
+    case 0:
+      return "HDD -> CPU -> Intake -> Exhaust";
+
+    case 1:
+      return "CPU -> Intake -> Exhaust -> HDD";
+
+    case 2:
+      return "Intake -> Exhaust -> HDD -> CPU";
+
+    case 3:
+      return "Exhaust -> HDD -> CPU -> Intake";
+
+    default:
+      return "Unknown";
+  }
+}
+
+void GroupFillWaveEffect::stepFill()
+{
+  const uint8_t actualGroup =
+    getActualGroup();
+
+  const uint8_t groupLedCount =
+    getGroupLedCount(
+      actualGroup
+    );
+
+  if (groupLedCount == 0)
+  {
+    currentGroup++;
+
+    currentLed = 0;
+
+    if (currentGroup >= GROUP_COUNT)
+    {
+      phase = Phase::Emptying;
+
+      currentGroup = 0;
+    }
+
+    return;
+  }
+
+  renderPixel(
+    actualGroup,
+    currentLed,
+    true
+  );
+
+  currentLed++;
+
+  if (currentLed >= groupLedCount)
+  {
+    currentLed = 0;
+
+    currentGroup++;
+
+    if (currentGroup >= GROUP_COUNT)
+    {
+      phase = Phase::Emptying;
+
+      currentGroup = 0;
+    }
+  }
+}
+
+void GroupFillWaveEffect::stepEmpty()
+{
+  const uint8_t actualGroup =
+    getActualGroup();
+
+  const uint8_t groupLedCount =
+    getGroupLedCount(
+      actualGroup
+    );
+
+  if (groupLedCount == 0)
+  {
+    currentGroup++;
+
+    currentLed = 0;
+
+    if (currentGroup >= GROUP_COUNT)
+    {
+      nextCycle();
+    }
+
+    return;
+  }
+
+  renderPixel(
+    actualGroup,
+    currentLed,
+    false
+  );
+
+  currentLed++;
+
+  if (currentLed >= groupLedCount)
+  {
+    currentLed = 0;
+
+    currentGroup++;
+
+    if (currentGroup >= GROUP_COUNT)
+    {
+      nextCycle();
+    }
+  }
+}
+
+void GroupFillWaveEffect::nextCycle()
+{
+  phase = Phase::Filling;
+
+  currentGroup = 0;
+
+  currentLed = 0;
+
+  colorPosition += 17;
+}
+
+void GroupFillWaveEffect::clearAllPixels()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  for (
+    uint8_t group = 0;
+    group < GROUP_COUNT;
+    group++
+  )
+  {
+    CRGB* groupLeds =
+      getGroupLeds(
+        group
+      );
+
+    const uint8_t groupLedCount =
+      getGroupLedCount(
+        group
+      );
+
+    if (groupLeds == nullptr)
+    {
+      continue;
+    }
+
+    for (
+      uint8_t ledIndex = 0;
+      ledIndex < groupLedCount;
+      ledIndex++
+    )
+    {
+      groupLeds[ledIndex] =
+        CRGB::Black;
+    }
+  }
+}
+
+void GroupFillWaveEffect::renderPixel(
+  uint8_t group,
+  uint8_t led,
+  bool on
+)
+{
+  CRGB* groupLeds =
+    getGroupLeds(
+      group
+    );
+
+  const uint8_t groupLedCount =
+    getGroupLedCount(
+      group
+    );
+
+  if (
+    groupLeds == nullptr ||
+    led >= groupLedCount
+  )
+  {
+    return;
+  }
+
+  if (on)
+  {
+    groupLeds[led] =
+      currentColor();
+  }
+  else
+  {
+    groupLeds[led] =
+      CRGB::Black;
+  }
+}
+
+uint8_t GroupFillWaveEffect::
+getActualGroup() const
+{
+  return (
+    startGroup +
+    currentGroup
+  ) % GROUP_COUNT;
+}
+
+uint8_t GroupFillWaveEffect::
+getGroupLedCount(
+  uint8_t group
+) const
+{
+  // All fans within each output group are connected
+  // in parallel. Every fan receives the same data,
+  // so each group behaves as one 8-LED fan.
+  if (group < GROUP_COUNT)
+  {
+    return 8;
+  }
+
+  return 0;
+}
+
+CRGB* GroupFillWaveEffect::getGroupLeds(
+  uint8_t group
+) const
+{
+  if (leds == nullptr)
+  {
+    return nullptr;
+  }
+
+  switch (group)
+  {
+    case 0:
+      return leds->getHddLeds();
+
+    case 1:
+      return leds->getCpuLeds();
+
+    case 2:
+      return leds->getIntakeLeds();
+
+    case 3:
+      return leds->getExhaustLeds();
+
+    default:
+      return nullptr;
+  }
+}
+
+CRGB GroupFillWaveEffect::currentColor() const
+{
+  return CHSV(
+    colorPosition,
+    255,
+    255
+  );
+}
+
+void GroupFillWaveEffect::updateInterval()
+{
+  updateIntervalMs =
+    SpeedCurve::interval(
+      speed,
+      SpeedProfile::GroupFillWave
+    );
+}

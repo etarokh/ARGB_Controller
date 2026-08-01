@@ -1,0 +1,61 @@
+#pragma once
+
+#include <Arduino.h>
+#include <FastLED.h>
+
+#include "DecorativeEffect.h"
+#include "LedManager.h"
+
+class GroupFillWaveEffect : public DecorativeEffect
+{
+public:
+  void begin(
+    LedManager* ledManager
+  ) override;
+
+  void update() override;
+
+  void reset() override;
+
+  void setColor(
+    const CRGB& color
+  ) override;
+
+  void setSpeed(
+    uint8_t speedPercent
+  );
+
+  uint8_t getSpeed() const;
+
+private:
+  enum class Phase
+  {
+    Fill,
+    Empty
+  };
+
+  LedManager* leds = nullptr;
+
+  Phase phase = Phase::Fill;
+
+  uint16_t globalPosition = 0;
+
+  uint8_t hue = 0;
+
+  uint8_t speed = 50;
+
+  unsigned long lastUpdateTime = 0;
+
+  unsigned long updateIntervalMs = 250;
+
+  void advanceStep();
+
+  void render();
+
+  void setGlobalPixel(
+    uint16_t globalIndex,
+    const CRGB& color
+  );
+
+  void updateInterval();
+};

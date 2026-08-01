@@ -1,0 +1,186 @@
+#include "BrightnessManager.h"
+
+#include "Config.h"
+#include "LedManager.h"
+
+void BrightnessManager::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+  brightness = DEFAULT_BRIGHTNESS;
+
+  apply();
+
+  Serial.print("Brightness: ");
+  Serial.println(brightness);
+}
+
+void BrightnessManager::setBrightness(
+  uint8_t newBrightness
+)
+{
+  brightness = constrain(
+    newBrightness,
+    MIN_BRIGHTNESS,
+    MAX_BRIGHTNESS
+  );
+
+  apply();
+}
+
+uint8_t BrightnessManager::
+getBrightness() const
+{
+  return brightness;
+}
+
+void BrightnessManager::increase()
+{
+  if (
+    brightness >=
+    MAX_BRIGHTNESS - BRIGHTNESS_STEP
+  )
+  {
+    setBrightness(
+      MAX_BRIGHTNESS
+    );
+
+    return;
+  }
+
+  setBrightness(
+    brightness + BRIGHTNESS_STEP
+  );
+}
+
+void BrightnessManager::decrease()
+{
+  if (
+    brightness <=
+    MIN_BRIGHTNESS + BRIGHTNESS_STEP
+  )
+  {
+    setBrightness(
+      MIN_BRIGHTNESS
+    );
+
+    return;
+  }
+
+  setBrightness(
+    brightness - BRIGHTNESS_STEP
+  );
+}
+
+void BrightnessManager::showPreview()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  leds->setAll(
+    CRGB::White
+  );
+
+  leds->show();
+}
+
+void BrightnessManager::updateAdjustment(
+  bool adjusting
+)
+{
+  if (!adjusting)
+  {
+    wasAdjusting = false;
+    return;
+  }
+
+  const unsigned long now =
+    millis();
+
+  if (!wasAdjusting)
+  {
+    wasAdjusting = true;
+    lastAdjustmentAt = 0;
+  }
+
+  if (
+    lastAdjustmentAt != 0 &&
+    now - lastAdjustmentAt <
+      ADJUST_INTERVAL_MS
+  )
+  {
+    return;
+  }
+
+  lastAdjustmentAt = now;
+
+  const uint8_t previousBrightness =
+    brightness;
+
+  if (increasing)
+  {
+    increase();
+  }
+  else
+  {
+    decrease();
+  }
+
+  const bool reachedMaximum =
+    increasing &&
+    previousBrightness < MAX_BRIGHTNESS &&
+    brightness == MAX_BRIGHTNESS;
+
+  const bool reachedMinimum =
+    !increasing &&
+    previousBrightness > MIN_BRIGHTNESS &&
+    brightness == MIN_BRIGHTNESS;
+
+  showPreview();
+
+  if (
+    reachedMaximum ||
+    reachedMinimum
+  )
+  {
+    flashBoundary();
+    increasing = !increasing;
+  }
+
+  Serial.print("Brightness: ");
+  Serial.println(brightness);
+}
+
+void BrightnessManager::apply()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  leds->setBrightness(
+    brightness
+  );
+
+  leds->show();
+}
+
+void BrightnessManager::flashBoundary()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  for (uint8_t i = 0; i < 2; i++)
+  {
+    leds->clear();
+    delay(90);
+
+    showPreview();
+    delay(110);
+  }
+}

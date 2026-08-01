@@ -1,0 +1,194 @@
+#include "GradientFlowEffect.h"
+
+void GradientFlowEffect::nextPattern()
+{
+  patternIndex++;
+
+  if (patternIndex >= PATTERN_COUNT)
+  {
+    patternIndex = 0;
+  }
+
+  Serial.print(
+    "Gradient Flow pattern: "
+  );
+
+  Serial.println(
+    getPatternName()
+  );
+}
+
+uint8_t GradientFlowEffect::
+getPattern() const
+{
+  return patternIndex;
+}
+
+const char*
+GradientFlowEffect::getPatternName() const
+{
+  switch (patternIndex)
+  {
+    case 0:
+      return "Smooth Forward";
+
+    case 1:
+      return "Smooth Reverse";
+
+    case 2:
+      return "Soft Pulse";
+
+    case 3:
+      return "Mirror Flow";
+
+    default:
+      return "Unknown";
+  }
+}
+
+void GradientFlowEffect::renderFrame()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  for (
+    uint8_t groupIndex = 0;
+    groupIndex < GROUP_COUNT;
+    groupIndex++
+  )
+  {
+    const uint16_t ledCount =
+      getGroupLedCount(
+        groupIndex
+      );
+
+    for (
+      uint16_t ledIndex = 0;
+      ledIndex < ledCount;
+      ledIndex++
+    )
+    {
+      const uint8_t hueOffset =
+        calculateHueOffset(
+          groupIndex,
+          ledIndex
+        );
+
+      const uint8_t brightness =
+        calculateBrightness(
+          groupIndex,
+          ledIndex
+        );
+
+      setGroupPixel(
+        groupIndex,
+        ledIndex,
+        hsvColor(
+          hueOffset,
+          210,
+          brightness
+        )
+      );
+    }
+  }
+}
+
+uint8_t GradientFlowEffect::
+calculateHueOffset(
+  uint8_t groupIndex,
+  uint16_t ledIndex
+) const
+{
+  switch (patternIndex)
+  {
+    case 0:
+      // One continuous, gentle forward gradient.
+      return static_cast<uint8_t>(
+        (
+          groupIndex * 42
+        ) +
+        (
+          ledIndex * 5
+        )
+      );
+
+    case 1:
+      // Same gradient in the opposite direction.
+      return static_cast<uint8_t>(
+        255 -
+        (
+          (
+            groupIndex * 42
+          ) +
+          (
+            ledIndex * 5
+          )
+        )
+      );
+
+    case 2:
+      // Wider color spacing with a soft light pulse.
+      return static_cast<uint8_t>(
+        (
+          groupIndex * 58
+        ) +
+        (
+          ledIndex * 8
+        )
+      );
+
+    case 3:
+    {
+      // HDD mirrors Exhaust, CPU mirrors Intake.
+      const uint8_t mirroredGroup =
+        groupIndex < 2
+          ? groupIndex
+          : GROUP_COUNT - 1 - groupIndex;
+
+      return static_cast<uint8_t>(
+        (
+          mirroredGroup * 74
+        ) +
+        (
+          ledIndex * 7
+        )
+      );
+    }
+
+    default:
+      return 0;
+  }
+}
+
+uint8_t GradientFlowEffect::
+calculateBrightness(
+  uint8_t groupIndex,
+  uint16_t ledIndex
+) const
+{
+  if (patternIndex != 2)
+  {
+    return 255;
+  }
+
+  const uint8_t phase =
+    static_cast<uint8_t>(
+      baseHue +
+      (
+        groupIndex * 48
+      ) +
+      (
+        ledIndex * 10
+      )
+    );
+
+  return static_cast<uint8_t>(
+    135 +
+    scale8(
+      sin8(phase),
+      120
+    )
+  );
+}

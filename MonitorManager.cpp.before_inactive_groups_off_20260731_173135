@@ -1,0 +1,553 @@
+#include "MonitorManager.h"
+
+#include "LedManager.h"
+#include "Config.h"
+
+void MonitorManager::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+
+  enabled = false;
+
+  currentPage =
+    MonitorPage::SystemOverview;
+
+  cpuUsagePercent = 50;
+
+  storageUsedPercent = 25;
+
+  storageFreeTb = 6.0f;
+
+  storageTotalTb = 8.0f;
+
+  preferencesReady =
+    preferences.begin(
+      "monitor-mode",
+      false
+    );
+
+  if (preferencesReady)
+  {
+    themeIndex =
+      preferences.getUChar(
+        "theme",
+        0
+      );
+
+    if (themeIndex >= THEME_COUNT)
+    {
+      themeIndex = 0;
+
+      preferences.putUChar(
+        "theme",
+        themeIndex
+      );
+    }
+
+    Serial.print(
+      "MONITOR THEME RESTORED: "
+    );
+
+    Serial.println(
+      getThemeName()
+    );
+  }
+  else
+  {
+    themeIndex = 0;
+
+    Serial.println(
+      "MONITOR THEME: NVS unavailable"
+    );
+  }
+
+  needsRender = true;
+}
+
+void MonitorManager::update()
+{
+  if (
+    !enabled ||
+    leds == nullptr
+  )
+  {
+    return;
+  }
+
+  if (!needsRender)
+  {
+    return;
+  }
+
+  render();
+
+  needsRender = false;
+}
+
+void MonitorManager::setEnabled(
+  bool newEnabled
+)
+{
+  if (enabled == newEnabled)
+  {
+    return;
+  }
+
+  enabled = newEnabled;
+
+  if (enabled)
+  {
+    needsRender = true;
+  }
+}
+
+bool MonitorManager::isEnabled() const
+{
+  return enabled;
+}
+
+void MonitorManager::resetToFirstPage()
+{
+  currentPage =
+    MonitorPage::SystemOverview;
+
+  needsRender = true;
+}
+
+void MonitorManager::nextMonitorPage()
+{
+  if (!enabled)
+  {
+    return;
+  }
+
+  switch (currentPage)
+  {
+    case MonitorPage::SystemOverview:
+      currentPage =
+        MonitorPage::Network;
+      break;
+
+    case MonitorPage::Network:
+      currentPage =
+        MonitorPage::Services;
+      break;
+
+    case MonitorPage::Services:
+      currentPage =
+        MonitorPage::SystemOverview;
+      break;
+  }
+
+  needsRender = true;
+
+  Serial.print(
+    "MONITOR PAGE: "
+  );
+
+  Serial.println(
+    getMonitorPageName()
+  );
+}
+
+MonitorPage
+MonitorManager::getMonitorPage() const
+{
+  return currentPage;
+}
+
+const char*
+MonitorManager::getMonitorPageName() const
+{
+  switch (currentPage)
+  {
+    case MonitorPage::SystemOverview:
+      return "HDD + CPU";
+
+    case MonitorPage::Network:
+      return "NETWORK";
+
+    case MonitorPage::Services:
+      return "SERVICE";
+  }
+
+  return "UNKNOWN";
+}
+
+void MonitorManager::setCpuUsagePercent(
+  uint8_t percent
+)
+{
+  percent = constrain(
+    percent,
+    0,
+    100
+  );
+
+  if (cpuUsagePercent == percent)
+  {
+    return;
+  }
+
+  cpuUsagePercent = percent;
+
+  needsRender = true;
+}
+
+uint8_t
+MonitorManager::getCpuUsagePercent() const
+{
+  return cpuUsagePercent;
+}
+
+void MonitorManager::setStorageUsedPercent(
+  uint8_t percent
+)
+{
+  percent = constrain(
+    percent,
+    0,
+    100
+  );
+
+  if (
+    storageUsedPercent ==
+      percent
+  )
+  {
+    return;
+  }
+
+  storageUsedPercent = percent;
+
+  needsRender = true;
+}
+
+uint8_t
+MonitorManager::getStorageUsedPercent() const
+{
+  return storageUsedPercent;
+}
+
+void MonitorManager::setStorageCapacity(
+  float freeTb,
+  float totalTb
+)
+{
+  if (freeTb < 0.0f)
+  {
+    freeTb = 0.0f;
+  }
+
+  if (totalTb < 0.0f)
+  {
+    totalTb = 0.0f;
+  }
+
+  if (
+    totalTb > 0.0f &&
+    freeTb > totalTb
+  )
+  {
+    freeTb = totalTb;
+  }
+
+  storageFreeTb = freeTb;
+
+  storageTotalTb = totalTb;
+
+  needsRender = true;
+}
+
+float
+MonitorManager::getStorageFreeTb() const
+{
+  return storageFreeTb;
+}
+
+float
+MonitorManager::getStorageTotalTb() const
+{
+  return storageTotalTb;
+}
+
+void MonitorManager::setTheme(
+  uint8_t theme
+)
+{
+  if (theme >= THEME_COUNT)
+  {
+    theme = 0;
+  }
+
+  if (themeIndex == theme)
+  {
+    return;
+  }
+
+  themeIndex = theme;
+
+  if (preferencesReady)
+  {
+    preferences.putUChar(
+      "theme",
+      themeIndex
+    );
+  }
+
+  needsRender = true;
+}
+
+void MonitorManager::nextTheme()
+{
+  themeIndex++;
+
+  if (themeIndex >= THEME_COUNT)
+  {
+    themeIndex = 0;
+  }
+
+  if (preferencesReady)
+  {
+    preferences.putUChar(
+      "theme",
+      themeIndex
+    );
+  }
+
+  needsRender = true;
+
+  Serial.print(
+    "MONITOR THEME: "
+  );
+
+  Serial.println(
+    getThemeName()
+  );
+}
+
+uint8_t MonitorManager::getTheme() const
+{
+  return themeIndex;
+}
+
+const char*
+MonitorManager::getThemeName() const
+{
+  switch (themeIndex)
+  {
+    case 0:
+      return "WHITE / RED / BLUE";
+
+    case 1:
+      return "DARK / ORANGE / CYAN";
+
+    case 2:
+      return "VIOLET / GREEN / MAGENTA";
+
+    default:
+      return "UNKNOWN";
+  }
+}
+
+void MonitorManager::render()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  switch (currentPage)
+  {
+    case MonitorPage::SystemOverview:
+      renderSystemOverview();
+      break;
+
+    case MonitorPage::Network:
+      renderPlaceholder(
+        CRGB::Blue
+      );
+      break;
+
+    case MonitorPage::Services:
+      renderPlaceholder(
+        CRGB::Green
+      );
+      break;
+  }
+
+  leds->setEffectBrightness(
+    255
+  );
+
+  leds->show();
+}
+
+void MonitorManager::renderSystemOverview()
+{
+  gaugeRenderer.render(
+    leds->getHddLeds(),
+    LED_COUNT_HDD,
+    storageUsedPercent,
+    getStorageColor(),
+    getBackgroundColor()
+  );
+
+  gaugeRenderer.render(
+    leds->getCpuLeds(),
+    LED_COUNT_CPU,
+    cpuUsagePercent,
+    getCpuColor(),
+    getBackgroundColor()
+  );
+
+  const CRGB inactiveColor =
+    getInactiveGroupColor();
+
+  for (
+    uint16_t index = 0;
+    index < LED_COUNT_INTAKE;
+    index++
+  )
+  {
+    leds->getIntakeLeds()[
+      index
+    ] = inactiveColor;
+  }
+
+  for (
+    uint16_t index = 0;
+    index < LED_COUNT_EXHAUST;
+    index++
+  )
+  {
+    leds->getExhaustLeds()[
+      index
+    ] = inactiveColor;
+  }
+}
+
+void MonitorManager::renderPlaceholder(
+  const CRGB& color
+)
+{
+  for (
+    uint16_t index = 0;
+    index < LED_COUNT_HDD;
+    index++
+  )
+  {
+    leds->getHddLeds()[index] =
+      color;
+  }
+
+  for (
+    uint16_t index = 0;
+    index < LED_COUNT_CPU;
+    index++
+  )
+  {
+    leds->getCpuLeds()[index] =
+      color;
+  }
+
+  for (
+    uint16_t index = 0;
+    index < LED_COUNT_INTAKE;
+    index++
+  )
+  {
+    leds->getIntakeLeds()[index] =
+      color;
+  }
+
+  for (
+    uint16_t index = 0;
+    index < LED_COUNT_EXHAUST;
+    index++
+  )
+  {
+    leds->getExhaustLeds()[index] =
+      color;
+  }
+}
+
+CRGB MonitorManager::
+getBackgroundColor() const
+{
+  switch (themeIndex)
+  {
+    case 0:
+      return CRGB::White;
+
+    case 1:
+      return CRGB(
+        10,
+        10,
+        18
+      );
+
+    case 2:
+      return CRGB(
+        28,
+        0,
+        38
+      );
+
+    default:
+      return CRGB::White;
+  }
+}
+
+CRGB MonitorManager::
+getStorageColor() const
+{
+  switch (themeIndex)
+  {
+    case 0:
+      return CRGB::Red;
+
+    case 1:
+      return CRGB::Orange;
+
+    case 2:
+      return CRGB::LimeGreen;
+
+    default:
+      return CRGB::Red;
+  }
+}
+
+CRGB MonitorManager::
+getCpuColor() const
+{
+  switch (themeIndex)
+  {
+    case 0:
+      return CRGB::Blue;
+
+    case 1:
+      return CRGB::Cyan;
+
+    case 2:
+      return CRGB::Magenta;
+
+    default:
+      return CRGB::Blue;
+  }
+}
+
+CRGB MonitorManager::
+getInactiveGroupColor() const
+{
+  CRGB color =
+    getBackgroundColor();
+
+  color.nscale8_video(
+    80
+  );
+
+  return color;
+}

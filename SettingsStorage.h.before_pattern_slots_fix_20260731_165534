@@ -1,0 +1,108 @@
+#pragma once
+
+#include <Arduino.h>
+#include <Preferences.h>
+
+struct PersistentSettings
+{
+  uint16_t version;
+
+  uint8_t mode;
+
+  uint8_t brightness;
+
+  uint8_t decorativeSpeed;
+
+  uint8_t decorativeEffect;
+
+  static constexpr uint8_t DECORATIVE_PATTERN_SLOTS = 16;
+
+  uint8_t decorativePatterns[
+    DECORATIVE_PATTERN_SLOTS
+  ];
+
+  uint8_t palette;
+
+  uint8_t paletteReversed;
+
+  uint8_t staticColorIndex;
+};
+
+class SettingsStorage
+{
+public:
+  static constexpr uint16_t
+    SETTINGS_VERSION = 2;
+
+  void begin();
+
+  void update();
+
+  bool isReady() const;
+
+  uint8_t getMode() const;
+  uint8_t getBrightness() const;
+  uint8_t getDecorativeSpeed() const;
+  uint8_t getDecorativeEffect() const;
+  uint8_t getPalette() const;
+  bool getPaletteReversed() const;
+  uint8_t getStaticColorIndex() const;
+
+  void setMode(
+    uint8_t value
+  );
+
+  void setBrightness(
+    uint8_t value
+  );
+
+  void setDecorativeSpeed(
+    uint8_t value
+  );
+
+  void setDecorativeEffect(
+    uint8_t value
+  );
+
+  void setPalette(
+    uint8_t value
+  );
+
+  void setPaletteReversed(
+    bool value
+  );
+
+  void setStaticColorIndex(
+    uint8_t value
+  );
+
+  void resetToDefaults();
+
+private:
+  static constexpr unsigned long
+    SAVE_DELAY_MS = 1500UL;
+
+  Preferences preferences;
+
+  PersistentSettings settings;
+
+  bool ready = false;
+
+  bool dirty = false;
+
+  unsigned long lastChangeAt = 0;
+
+  void load();
+
+  void save();
+
+  void markDirty();
+
+  bool migrateIfNeeded(
+    PersistentSettings& loaded
+  );
+
+  bool valuesAreValid() const;
+};
+
+SettingsStorage& settingsStorage();

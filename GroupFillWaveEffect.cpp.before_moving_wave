@@ -1,0 +1,228 @@
+#include "GroupFillWaveEffect.h"
+#include "SpeedCurve.h"
+#include "Config.h"
+
+void GroupFillWaveEffect::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+
+  setSpeed(50);
+
+  reset();
+}
+
+void GroupFillWaveEffect::update()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const unsigned long currentTime =
+    millis();
+
+  if (
+    currentTime - lastUpdateTime <
+      updateIntervalMs
+  )
+  {
+    return;
+  }
+
+  lastUpdateTime = currentTime;
+
+  advanceStep();
+  render();
+}
+
+void GroupFillWaveEffect::reset()
+{
+  phase = Phase::Fill;
+
+  globalPosition = 0;
+
+  hue = 0;
+
+  lastUpdateTime = millis();
+
+  render();
+}
+
+void GroupFillWaveEffect::setColor(
+  const CRGB& color
+)
+{
+  // This effect generates its own colors.
+}
+
+void GroupFillWaveEffect::setSpeed(
+  uint8_t speedPercent
+)
+{
+  speed = constrain(
+    speedPercent,
+    1,
+    100
+  );
+
+  updateInterval();
+}
+
+uint8_t GroupFillWaveEffect::getSpeed() const
+{
+  return speed;
+}
+
+void GroupFillWaveEffect::advanceStep()
+{
+  if (phase == Phase::Fill)
+  {
+    if (globalPosition < LED_COUNT_TOTAL)
+    {
+      globalPosition++;
+      return;
+    }
+
+    // The whole 96-LED string is full.
+    // Immediately begin emptying from pixel zero.
+    phase = Phase::Empty;
+
+    globalPosition = 1;
+
+    return;
+  }
+
+  if (globalPosition < LED_COUNT_TOTAL)
+  {
+    globalPosition++;
+    return;
+  }
+
+  // The whole 96-LED string is empty.
+  // Immediately begin the next fill cycle.
+  phase = Phase::Fill;
+
+  globalPosition = 1;
+
+  hue += 32;
+}
+
+void GroupFillWaveEffect::render()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const CRGB color =
+    CHSV(
+      hue,
+      255,
+      255
+    );
+
+  for (
+    uint16_t globalIndex = 0;
+    globalIndex < LED_COUNT_TOTAL;
+    globalIndex++
+  )
+  {
+    bool pixelVisible = false;
+
+    if (phase == Phase::Fill)
+    {
+      pixelVisible =
+        globalIndex < globalPosition;
+    }
+    else
+    {
+      pixelVisible =
+        globalIndex >= globalPosition;
+    }
+
+    setGlobalPixel(
+      globalIndex,
+      pixelVisible
+        ? color
+        : CRGB::Black
+    );
+  }
+
+  leds->setEffectBrightness(255);
+
+  leds->show();
+}
+
+void GroupFillWaveEffect::setGlobalPixel(
+  uint16_t globalIndex,
+  const CRGB& color
+)
+{
+  if (globalIndex < LED_COUNT_HDD)
+  {
+    CRGB* group =
+      leds->getHddLeds();
+
+    if (group != nullptr)
+    {
+      group[globalIndex] = color;
+    }
+
+    return;
+  }
+
+  globalIndex -= LED_COUNT_HDD;
+
+  if (globalIndex < LED_COUNT_CPU)
+  {
+    CRGB* group =
+      leds->getCpuLeds();
+
+    if (group != nullptr)
+    {
+      group[globalIndex] = color;
+    }
+
+    return;
+  }
+
+  globalIndex -= LED_COUNT_CPU;
+
+  if (globalIndex < LED_COUNT_INTAKE)
+  {
+    CRGB* group =
+      leds->getIntakeLeds();
+
+    if (group != nullptr)
+    {
+      group[globalIndex] = color;
+    }
+
+    return;
+  }
+
+  globalIndex -= LED_COUNT_INTAKE;
+
+  if (globalIndex < LED_COUNT_EXHAUST)
+  {
+    CRGB* group =
+      leds->getExhaustLeds();
+
+    if (group != nullptr)
+    {
+      group[globalIndex] = color;
+    }
+  }
+}
+
+void GroupFillWaveEffect::updateInterval()
+{
+  updateIntervalMs =
+    SpeedCurve::interval(
+      speed,
+      3000,
+      2
+    );
+}

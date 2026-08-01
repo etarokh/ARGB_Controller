@@ -1,0 +1,38 @@
+#pragma once
+
+#include <Arduino.h>
+#include <FastLED.h>
+
+class RingAnimationEngine
+{
+public:
+  static constexpr uint8_t LEDS_PER_RING = 8;
+
+  void begin();
+
+  void reset();
+
+  void setColor(
+    const CRGB& color
+  );
+
+  void setProgress(
+    uint8_t value
+  );
+
+  void setPattern(
+    uint8_t value
+  );
+
+  void renderRing(
+    CRGB* leds,
+    uint16_t ledCount
+  );
+
+private:
+  CRGB color = CRGB::White;
+
+  uint8_t progress = 0;
+
+  uint8_t pattern = 0;
+};

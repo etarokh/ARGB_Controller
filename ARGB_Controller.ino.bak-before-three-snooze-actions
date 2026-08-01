@@ -1,0 +1,462 @@
+#include <Arduino.h>
+
+#include "LedManager.h"
+#include "ButtonManager.h"
+#include "BuzzerManager.h"
+#include "KnockManager.h"
+#include "EffectManager.h"
+#include "DecorativeEffectManager.h"
+#include "ModeManager.h"
+#include "CommandParser.h"
+
+LedManager leds;
+ButtonManager button;
+BuzzerManager buzzer;
+KnockManager knock;
+EffectManager effects;
+DecorativeEffectManager decorativeEffects;
+ModeManager modeManager;
+CommandParser commandParser;
+
+uint8_t testStage = 0;
+
+void resetAllStates()
+{
+  effects.setNetworkState(
+    MonitorState::Normal
+  );
+
+  effects.setCpuState(
+    MonitorState::Normal
+  );
+
+  effects.setAllDisksState(
+    MonitorState::Normal
+  );
+}
+
+void applyTestStage()
+{
+  resetAllStates();
+
+  switch (testStage)
+  {
+    case 0:
+      Serial.println(
+        "TEST 0: All systems NORMAL"
+      );
+      break;
+
+    case 1:
+      effects.setDiskState(
+        0,
+        MonitorState::Warning
+      );
+
+      effects.setDiskState(
+        2,
+        MonitorState::Critical
+      );
+
+      Serial.println("TEST 1:");
+      Serial.println("BAY1 WARNING");
+      Serial.println("BAY3 CRITICAL");
+      break;
+
+    case 2:
+      effects.setDiskState(
+        0,
+        MonitorState::Warning
+      );
+
+      effects.setDiskState(
+        1,
+        MonitorState::Critical
+      );
+
+      effects.setDiskState(
+        3,
+        MonitorState::Warning
+      );
+
+      Serial.println("TEST 2:");
+      Serial.println("BAY1 WARNING");
+      Serial.println("BAY2 CRITICAL");
+      Serial.println("BAY4 WARNING");
+      break;
+
+    case 3:
+      effects.setDiskState(
+        0,
+        MonitorState::Critical
+      );
+
+      effects.setDiskState(
+        2,
+        MonitorState::Critical
+      );
+
+      effects.setDiskState(
+        3,
+        MonitorState::Critical
+      );
+
+      Serial.println("TEST 3:");
+      Serial.println(
+        "BAY1, BAY3, BAY4 CRITICAL"
+      );
+      break;
+
+    case 4:
+      effects.setDiskState(
+        1,
+        MonitorState::Offline
+      );
+
+      effects.setDiskState(
+        2,
+        MonitorState::Warning
+      );
+
+      effects.setDiskState(
+        3,
+        MonitorState::Critical
+      );
+
+      Serial.println("TEST 4:");
+      Serial.println("BAY2 OFFLINE");
+      Serial.println("BAY3 WARNING");
+      Serial.println("BAY4 CRITICAL");
+      break;
+
+    case 5:
+      effects.setNetworkState(
+        MonitorState::Offline
+      );
+
+      effects.setDiskState(
+        0,
+        MonitorState::Warning
+      );
+
+      effects.setDiskState(
+        2,
+        MonitorState::Critical
+      );
+
+      effects.setCpuState(
+        MonitorState::Critical
+      );
+
+      Serial.println("TEST 5:");
+      Serial.println("Network OFFLINE");
+      Serial.println("BAY1 WARNING");
+      Serial.println("BAY3 CRITICAL");
+      Serial.println("CPU CRITICAL");
+      break;
+  }
+}
+
+void printDecorativeStatus()
+{
+  Serial.println();
+  Serial.println(
+    "Decorative status:"
+  );
+
+  Serial.print(
+    "Effect: "
+  );
+
+  Serial.println(
+    decorativeEffects.getEffectName()
+  );
+
+  Serial.print(
+    "Palette: "
+  );
+
+  Serial.println(
+    decorativeEffects.getPaletteName()
+  );
+
+  Serial.print(
+    "Speed: "
+  );
+
+  Serial.print(
+    decorativeEffects.getSpeed()
+  );
+
+  Serial.println("%");
+}
+
+void playSnoozeAnimation()
+{
+  buzzer.beep(100);
+
+  for (int i = 0; i < 3; i++)
+  {
+    leds.setAll(CRGB::Green);
+    leds.show();
+    delay(120);
+
+    leds.clear();
+    delay(100);
+  }
+}
+
+void setup()
+{
+  Serial.begin(115200);
+
+  leds.begin();
+  button.begin();
+  buzzer.begin();
+  knock.begin();
+
+  effects.begin(
+    &leds
+  );
+
+  effects.setDefaultColor(
+    CRGB::Blue
+  );
+
+  commandParser.begin(
+    &effects,
+    &modeManager
+  );
+
+  decorativeEffects.begin(
+    &leds
+  );
+
+  decorativeEffects.setColor(
+    CRGB::Blue
+  );
+
+  decorativeEffects.setPalette(
+    DecorativePaletteType::Ocean
+  );
+
+  decorativeEffects.setSpeed(
+    35
+  );
+
+  decorativeEffects.setEffect(
+    DecorativeEffectType::StaticColor
+  );
+
+  applyTestStage();
+
+  modeManager.begin(
+    &leds,
+    &effects,
+    &decorativeEffects
+  );
+
+  modeManager.setMode(
+    SystemMode::Decorative
+  );
+
+  Serial.println();
+  Serial.println(
+    "Decorative control test"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Short button press:"
+  );
+
+  Serial.println(
+    "Next decorative effect"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Double button press:"
+  );
+
+  Serial.println(
+    "Double-click detection test"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Long button press:"
+  );
+
+  Serial.println(
+    "Next decorative palette"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Very long button press:"
+  );
+
+  Serial.println(
+    "24-hour alert snooze"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Knock:"
+  );
+
+  Serial.println(
+    "Decoration <-> Off"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Effect order:"
+  );
+
+  Serial.println(
+    "1. Static Color"
+  );
+
+  Serial.println(
+    "2. Breathing"
+  );
+
+  Serial.println(
+    "3. Rainbow"
+  );
+
+  Serial.println(
+    "4. Color Cycle"
+  );
+
+  Serial.println(
+    "5. Aurora"
+  );
+
+  Serial.println(
+    "6. Ocean Wave"
+  );
+
+  printDecorativeStatus();
+}
+
+void loop()
+{
+  commandParser.update();
+
+  button.update();
+  knock.update();
+
+  bool veryLongButtonPress =
+    button.wasVeryLongPressed();
+
+  bool longButtonPress =
+    button.wasLongPressed();
+
+  bool doubleButtonPress =
+    button.wasDoublePressed();
+
+  bool shortButtonPress =
+    button.wasPressed();
+
+  if (shortButtonPress)
+  {
+    Serial.println(
+      "BUTTON: SINGLE"
+    );
+  }
+
+  if (doubleButtonPress)
+  {
+    Serial.println(
+      "BUTTON: DOUBLE"
+    );
+  }
+
+  if (longButtonPress)
+  {
+    Serial.println(
+      "BUTTON: LONG"
+    );
+  }
+
+  if (veryLongButtonPress)
+  {
+    Serial.println(
+      "BUTTON: VERY LONG"
+    );
+  }
+
+  bool anyAlertActive =
+    effects.hasActiveAlert();
+
+  if (
+    veryLongButtonPress &&
+    anyAlertActive
+  )
+  {
+    buzzer.mute();
+    playSnoozeAnimation();
+    modeManager.snoozeAlertsFor24Hours();
+  }
+  else if (doubleButtonPress)
+  {
+    /*
+      Double-click is intentionally not connected
+      to alert snooze yet.
+
+      First we verify that double-click detection
+      works correctly.
+    */
+
+    Serial.println(
+      "DOUBLE CLICK: No action assigned yet"
+    );
+  }
+  else if (
+    effects.hasCriticalAlert() &&
+    (longButtonPress || shortButtonPress)
+  )
+  {
+    buzzer.mute(
+      effects.getCriticalAlertMask()
+    );
+
+    Serial.println(
+      "BUZZER: Current Critical alerts muted"
+    );
+  }
+  else if (longButtonPress)
+  {
+    decorativeEffects.nextPalette();
+
+    printDecorativeStatus();
+  }
+  else if (shortButtonPress)
+  {
+    decorativeEffects.nextEffect();
+
+    printDecorativeStatus();
+  }
+
+  uint8_t audibleCriticalMask =
+    effects.getCriticalAlertMask() &
+    static_cast<uint8_t>(
+      ~modeManager.getSnoozedAlertMask()
+    );
+
+  buzzer.update(
+    audibleCriticalMask
+  );
+
+  if (knock.wasDetected())
+  {
+    modeManager.nextMode();
+  }
+
+  modeManager.update();
+
+  delay(5);
+}

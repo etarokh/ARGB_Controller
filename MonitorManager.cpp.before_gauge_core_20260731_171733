@@ -1,0 +1,87 @@
+#include "MonitorManager.h"
+#include "LedManager.h"
+
+void MonitorManager::begin(
+  LedManager* ledManager
+) {
+  leds = ledManager;
+  enabled = false;
+  currentPage = MonitorPage::Storage;
+}
+
+void MonitorManager::update() {
+  if (!enabled) {
+    return;
+  }
+
+  // Rendering will be implemented later.
+}
+
+void MonitorManager::setEnabled(
+  bool newEnabled
+) {
+  enabled = newEnabled;
+}
+
+bool MonitorManager::isEnabled() const {
+  return enabled;
+}
+
+void MonitorManager::resetToFirstPage() {
+  currentPage = MonitorPage::Storage;
+}
+
+void MonitorManager::nextMonitorPage() {
+  if (!enabled) {
+    return;
+  }
+  switch (currentPage) {
+    case MonitorPage::Storage:
+      currentPage = MonitorPage::Cpu;
+      break;
+
+    case MonitorPage::Cpu:
+      currentPage = MonitorPage::Network;
+      break;
+
+    case MonitorPage::Network:
+      currentPage = MonitorPage::Services;
+      break;
+
+    case MonitorPage::Services:
+      currentPage = MonitorPage::Storage;
+      break;
+  }
+
+  Serial.print(
+    "MONITOR PAGE: "
+  );
+
+  Serial.println(
+    getMonitorPageName()
+  );
+}
+
+MonitorPage
+MonitorManager::getMonitorPage() const {
+  return currentPage;
+}
+
+const char*
+MonitorManager::getMonitorPageName() const {
+  switch (currentPage) {
+    case MonitorPage::Storage:
+      return "STORAGE";
+
+    case MonitorPage::Cpu:
+      return "CPU";
+
+    case MonitorPage::Network:
+      return "NETWORK";
+
+    case MonitorPage::Services:
+      return "SERVICE";
+  }
+
+  return "UNKNOWN";
+}

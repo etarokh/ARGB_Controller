@@ -1,0 +1,59 @@
+#pragma once
+
+#include <Arduino.h>
+#include "Config.h"
+
+class ButtonManager
+{
+public:
+  void begin();
+  void update();
+
+  bool wasPressed();
+  bool wasDoublePressed();
+
+  // نگه‌داشتن ۱ تا کمتر از ۳ ثانیه
+  bool wasLongPressed();
+
+  // فقط برای سازگاری موقت با کد قبلی
+  bool wasVeryLongPressed();
+
+  // این سه رویداد فقط بعد از رهاکردن دکمه فعال می‌شوند
+  bool wasSnooze24HoursPressed();
+  bool wasSnooze30DaysPressed();
+  bool wasSnooze6MonthsPressed();
+
+private:
+  bool lastReading = HIGH;
+  bool stableState = HIGH;
+
+  bool pressedEvent = false;
+  bool doublePressedEvent = false;
+  bool longPressedEvent = false;
+  bool veryLongPressedEvent = false;
+
+  bool snooze24HoursEvent = false;
+  bool snooze30DaysEvent = false;
+  bool snooze6MonthsEvent = false;
+
+  bool singleClickPending = false;
+
+  unsigned long lastDebounceTime = 0;
+  unsigned long pressStartTime = 0;
+  unsigned long firstClickReleasedAt = 0;
+
+  static constexpr unsigned long DOUBLE_CLICK_MS =
+    600UL;
+
+  static constexpr unsigned long LONG_PRESS_MS =
+    1000UL;
+
+  static constexpr unsigned long SNOOZE_24H_MS =
+    3000UL;
+
+  static constexpr unsigned long SNOOZE_30D_MS =
+    6000UL;
+
+  static constexpr unsigned long SNOOZE_6M_MS =
+    10000UL;
+};

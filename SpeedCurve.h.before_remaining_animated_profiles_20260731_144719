@@ -1,0 +1,176 @@
+#pragma once
+
+#include <Arduino.h>
+#include <math.h>
+
+enum class SpeedProfile : uint8_t
+{
+  Rainbow,
+  Fire,
+  Plasma,
+  LavaLamp,
+  Nebula,
+  SpectrumWave,
+  Continuous,
+  Sequential,
+  Breathing
+};
+
+class SpeedCurve
+{
+public:
+
+  static uint32_t interval(
+    uint8_t speedPercent,
+    SpeedProfile profile
+  )
+  {
+    switch (profile)
+    {
+      case SpeedProfile::Rainbow:
+        return interval(
+          speedPercent,
+          1600,
+          2
+        );
+
+      case SpeedProfile::Fire:
+        return interval(
+          speedPercent,
+          1200,
+          8
+        );
+
+      case SpeedProfile::Plasma:
+        return interval(
+          speedPercent,
+          1500,
+          2
+        );
+
+      case SpeedProfile::LavaLamp:
+        return interval(
+          speedPercent,
+          2600,
+          8
+        );
+
+      case SpeedProfile::Nebula:
+        return interval(
+          speedPercent,
+          3200,
+          10
+        );
+
+      case SpeedProfile::SpectrumWave:
+        return interval(
+          speedPercent,
+          1400,
+          2
+        );
+
+      case SpeedProfile::Continuous:
+        return interval(
+          speedPercent,
+          2200,
+          2
+        );
+
+      case SpeedProfile::Sequential:
+        return interval(
+          speedPercent,
+          4000,
+          4
+        );
+
+      case SpeedProfile::Breathing:
+        return interval(
+          speedPercent,
+          6000,
+          20
+        );
+    }
+
+    return interval(
+      speedPercent,
+      1800,
+      2
+    );
+  }
+
+  static uint32_t interval(
+    uint8_t speedPercent,
+    uint32_t slowestIntervalMs,
+    uint32_t fastestIntervalMs
+  )
+  {
+    speedPercent = constrain(
+      speedPercent,
+      1,
+      100
+    );
+
+    if (
+      slowestIntervalMs <
+      fastestIntervalMs
+    )
+    {
+      const uint32_t temp =
+        slowestIntervalMs;
+
+      slowestIntervalMs =
+        fastestIntervalMs;
+
+      fastestIntervalMs =
+        temp;
+    }
+
+    if (slowestIntervalMs == fastestIntervalMs)
+    {
+      return slowestIntervalMs;
+    }
+
+    const float x =
+      (speedPercent - 1) /
+      99.0f;
+
+    /*
+     * Mild S-curve followed by logarithmic interpolation.
+     *
+     * Logarithmic interpolation makes every part of the
+     * 1..100 range perceptible. Equal slider movements
+     * produce meaningful proportional speed changes.
+     */
+    const float curved =
+      x * x *
+      (
+        3.0f -
+        2.0f * x
+      );
+
+    const float slow =
+      static_cast<float>(
+        slowestIntervalMs
+      );
+
+    const float fast =
+      static_cast<float>(
+        fastestIntervalMs
+      );
+
+    const float intervalMs =
+      slow * powf(
+        fast / slow,
+        curved
+      );
+
+    const uint32_t rounded =
+      static_cast<uint32_t>(
+        intervalMs + 0.5f
+      );
+
+    return rounded < fastestIntervalMs
+      ? fastestIntervalMs
+      : rounded;
+  }
+};

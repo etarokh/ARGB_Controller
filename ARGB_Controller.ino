@@ -1,0 +1,254 @@
+#include <Arduino.h>
+
+#include "LedManager.h"
+#include "ButtonManager.h"
+#include "ButtonRouter.h"
+#include "BuzzerManager.h"
+#include "KnockManager.h"
+#include "KnockRouter.h"
+#include "EffectManager.h"
+#include "DecorativeEffectManager.h"
+#include "SettingsManager.h"
+#include "BrightnessManager.h"
+#include "MonitorManager.h"
+#include "ModeManager.h"
+#include "CommandParser.h"
+#include "SettingsStorage.h"
+
+LedManager leds;
+ButtonManager button;
+ButtonRouter buttonRouter;
+BuzzerManager buzzer;
+KnockManager knock;
+KnockRouter knockRouter;
+EffectManager effects;
+DecorativeEffectManager decorativeEffects;
+SettingsManager settingsManager;
+BrightnessManager brightnessManager;
+
+MonitorManager monitorManager;
+ModeManager modeManager;
+CommandParser commandParser;
+
+void printDecorativeStatus()
+{
+  Serial.println();
+  Serial.println(
+    "Decorative status:"
+  );
+
+  Serial.print(
+    "Effect: "
+  );
+
+  Serial.println(
+    decorativeEffects.getEffectName()
+  );
+
+  Serial.print(
+    "Palette: "
+  );
+
+  Serial.println(
+    decorativeEffects.getPaletteName()
+  );
+
+  Serial.print(
+    "Speed: "
+  );
+
+  Serial.print(
+    decorativeEffects.getSpeed()
+  );
+
+  Serial.println("%");
+}
+
+void playSnoozeAnimation(
+  uint8_t beepCount,
+  uint8_t flashCount,
+  const CRGB& flashColor
+)
+{
+  for (uint8_t i = 0; i < beepCount; i++)
+  {
+    buzzer.beep(100);
+
+    if (i + 1 < beepCount)
+    {
+      delay(120);
+    }
+  }
+
+  for (uint8_t i = 0; i < flashCount; i++)
+  {
+    leds.setAll(flashColor);
+    leds.show();
+    delay(220);
+
+    leds.clear();
+    delay(180);
+  }
+}
+
+void setup()
+{
+  Serial.begin(115200);
+
+  settingsStorage().begin();
+
+  leds.begin();
+
+  brightnessManager.begin(
+    &leds
+  );
+
+  button.begin();
+  buzzer.begin();
+  knock.begin();
+
+  effects.begin(
+    &leds
+  );
+
+  effects.setDefaultColor(
+    CRGB::Blue
+  );
+
+  commandParser.begin(
+    &effects,
+    &modeManager,
+    &monitorManager
+  );
+
+  decorativeEffects.begin(
+    &leds
+  );
+
+  decorativeEffects.setPalette(
+    static_cast<DecorativePaletteType>(
+      settingsStorage().getPalette()
+    )
+  );
+
+  decorativeEffects.setPaletteReversed(
+    settingsStorage().
+      getPaletteReversed()
+  );
+
+  decorativeEffects.setSpeed(
+    settingsStorage().
+      getDecorativeSpeed()
+  );
+
+  decorativeEffects.setEffect(
+    static_cast<DecorativeEffectType>(
+      settingsStorage().
+        getDecorativeEffect()
+    )
+  );
+
+  monitorManager.begin(
+    &leds
+  );
+
+  modeManager.begin(
+    &leds,
+    &effects,
+    &decorativeEffects,
+    &monitorManager,
+    &buzzer
+  );
+
+  settingsManager.begin();
+
+
+  buttonRouter.begin(
+    &button,
+    &buzzer,
+    &leds,
+    &effects,
+    &decorativeEffects,
+    &settingsManager,
+    &brightnessManager,
+    &monitorManager,
+    &modeManager
+  );
+
+  knockRouter.begin(
+    &knock,
+    &modeManager
+  );
+
+  Serial.println();
+  Serial.println(
+    "ARGB Controller ready"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Mode order:"
+  );
+
+  Serial.println(
+    "DECORATIVE -> MONITOR -> OFF"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Button controls are context-sensitive"
+  );
+
+  Serial.println();
+  Serial.println(
+    "Effect order:"
+  );
+
+  Serial.println(
+    "1. Static Color"
+  );
+
+  Serial.println(
+    "2. Breathing"
+  );
+
+  Serial.println(
+    "3. Rainbow"
+  );
+
+  Serial.println(
+    "4. Color Cycle"
+  );
+
+  Serial.println(
+    "5. Aurora"
+  );
+
+  Serial.println(
+    "6. Ocean Wave"
+  );
+
+  printDecorativeStatus();
+}
+
+void loop()
+{
+  settingsStorage().update();
+
+  commandParser.update();
+
+  knockRouter.update();
+
+  buttonRouter.update();
+
+  uint8_t audibleCriticalMask =
+    effects.getHardwareCriticalAlertMask();
+
+  buzzer.update(
+    audibleCriticalMask
+  );
+
+  modeManager.update();
+
+  delay(5);
+}

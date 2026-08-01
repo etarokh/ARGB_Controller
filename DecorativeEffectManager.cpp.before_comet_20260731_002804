@@ -1,0 +1,558 @@
+#include "DecorativeEffectManager.h"
+#include "Config.h"
+
+void DecorativeEffectManager::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+  enabled = false;
+
+  decorativeSpeed = 50;
+
+  paletteManager.begin();
+
+  staticColorEffect.begin(
+    ledManager
+  );
+
+  breathingEffect.begin(
+    ledManager
+  );
+
+  rainbowEffect.begin(
+    ledManager
+  );
+
+  rowLedSyncEffect.begin(
+    ledManager
+  );
+
+  groupFillWaveEffect.begin(
+    ledManager
+  );
+
+  colorCycleEffect.begin(
+    ledManager
+  );
+
+  auroraEffect.begin(
+    ledManager
+  );
+
+  oceanWaveEffect.begin(
+    ledManager
+  );
+
+  colorCycleEffect.setPaletteManager(
+    &paletteManager
+  );
+
+  groupFillWaveEffect.setPaletteManager(
+    &paletteManager
+  );
+
+  auroraEffect.setPaletteManager(
+    &paletteManager
+  );
+
+  oceanWaveEffect.setPaletteManager(
+    &paletteManager
+  );
+
+  applySpeedToEffects();
+
+  currentEffectType =
+    DecorativeEffectType::StaticColor;
+
+  selectCurrentEffect();
+}
+
+void DecorativeEffectManager::update()
+{
+  if (!enabled)
+  {
+    return;
+  }
+
+  if (currentEffect == nullptr)
+  {
+    return;
+  }
+
+  currentEffect->update();
+}
+
+void DecorativeEffectManager::setEnabled(
+  bool newEnabled
+)
+{
+  if (enabled == newEnabled)
+  {
+    return;
+  }
+
+  enabled = newEnabled;
+
+  if (enabled)
+  {
+    if (currentEffect != nullptr)
+    {
+      currentEffect->reset();
+    }
+  }
+  else
+  {
+    clear();
+  }
+}
+
+bool DecorativeEffectManager::isEnabled() const
+{
+  return enabled;
+}
+
+void DecorativeEffectManager::setEffect(
+  DecorativeEffectType effect
+)
+{
+  currentEffectType = effect;
+
+  selectCurrentEffect();
+
+  if (currentEffect != nullptr)
+  {
+    currentEffect->reset();
+  }
+
+  Serial.print(
+    "Decorative effect: "
+  );
+
+  Serial.println(
+    getEffectName()
+  );
+}
+
+DecorativeEffectType
+DecorativeEffectManager::getEffect() const
+{
+  return currentEffectType;
+}
+
+void DecorativeEffectManager::nextEffect()
+{
+  uint8_t currentIndex =
+    static_cast<uint8_t>(
+      currentEffectType
+    );
+
+  currentIndex++;
+
+  if (currentIndex >= EFFECT_COUNT)
+  {
+    currentIndex = 0;
+  }
+
+  setEffect(
+    static_cast<DecorativeEffectType>(
+      currentIndex
+    )
+  );
+}
+
+
+void DecorativeEffectManager::nextStaticColor()
+{
+  staticColorEffect.nextColor();
+
+  Serial.print(
+    "Static color: "
+  );
+
+  Serial.println(
+    staticColorEffect.getColorName()
+  );
+}
+
+const char*
+DecorativeEffectManager::getStaticColorName() const
+{
+  return staticColorEffect.getColorName();
+}
+
+
+void DecorativeEffectManager::previousEffect()
+{
+  uint8_t currentIndex =
+    static_cast<uint8_t>(
+      currentEffectType
+    );
+
+  if (currentIndex == 0)
+  {
+    currentIndex =
+      EFFECT_COUNT - 1;
+  }
+  else
+  {
+    currentIndex--;
+  }
+
+  setEffect(
+    static_cast<DecorativeEffectType>(
+      currentIndex
+    )
+  );
+}
+
+const char*
+DecorativeEffectManager::getEffectName() const
+{
+  switch (currentEffectType)
+  {
+    case DecorativeEffectType::StaticColor:
+      return "Static Color";
+
+    case DecorativeEffectType::Breathing:
+      return "Breathing";
+
+    case DecorativeEffectType::Rainbow:
+      return "Rainbow";
+
+    case DecorativeEffectType::RowLedSync:
+      return "Row LED Sync";
+
+    case DecorativeEffectType::GroupFillWave:
+      return "Group Fill Wave";
+
+    case DecorativeEffectType::ColorCycle:
+      return "Color Cycle";
+
+    case DecorativeEffectType::Aurora:
+      return "Aurora";
+
+    case DecorativeEffectType::OceanWave:
+      return "Ocean Wave";
+
+    default:
+      return "Unknown";
+  }
+}
+
+void DecorativeEffectManager::setColor(
+  const CRGB& color
+)
+{
+  staticColorEffect.setColor(
+    color
+  );
+
+  breathingEffect.setColor(
+    color
+  );
+
+  rainbowEffect.setColor(
+    color
+  );
+
+  rowLedSyncEffect.setColor(
+    color
+  );
+
+  groupFillWaveEffect.setColor(
+    color
+  );
+
+  colorCycleEffect.setColor(
+    color
+  );
+
+  auroraEffect.setColor(
+    color
+  );
+
+  oceanWaveEffect.setColor(
+    color
+  );
+
+  if (currentEffect != nullptr)
+  {
+    currentEffect->reset();
+  }
+}
+
+void DecorativeEffectManager::setPalette(
+  DecorativePaletteType paletteType
+)
+{
+  paletteManager.setPalette(
+    paletteType
+  );
+
+  if (currentEffect != nullptr)
+  {
+    currentEffect->reset();
+  }
+
+  Serial.print(
+    "Decorative palette: "
+  );
+
+  Serial.println(
+    getPaletteName()
+  );
+}
+
+DecorativePaletteType
+DecorativeEffectManager::getPaletteType() const
+{
+  return paletteManager.getPaletteType();
+}
+
+void DecorativeEffectManager::nextPalette()
+{
+  paletteManager.nextPalette();
+
+  if (currentEffect != nullptr)
+  {
+    currentEffect->reset();
+  }
+
+  Serial.print(
+    "Decorative palette: "
+  );
+
+  Serial.println(
+    getPaletteName()
+  );
+}
+
+void DecorativeEffectManager::previousPalette()
+{
+  paletteManager.previousPalette();
+
+  if (currentEffect != nullptr)
+  {
+    currentEffect->reset();
+  }
+
+  Serial.print(
+    "Decorative palette: "
+  );
+
+  Serial.println(
+    getPaletteName()
+  );
+}
+
+void DecorativeEffectManager::setPaletteReversed(
+  bool reversed
+)
+{
+  paletteManager.setReversed(
+    reversed
+  );
+
+  if (currentEffect != nullptr)
+  {
+    currentEffect->reset();
+  }
+}
+
+void DecorativeEffectManager::
+togglePaletteReversed()
+{
+  paletteManager.toggleReversed();
+
+  if (currentEffect != nullptr)
+  {
+    currentEffect->reset();
+  }
+}
+
+bool DecorativeEffectManager::
+isPaletteReversed() const
+{
+  return paletteManager.isReversed();
+}
+
+const char*
+DecorativeEffectManager::getPaletteName() const
+{
+  return paletteManager.getPaletteName();
+}
+
+void DecorativeEffectManager::setSpeed(
+  uint8_t speedPercent
+)
+{
+  if (speedPercent < 1)
+  {
+    speedPercent = 1;
+  }
+
+  if (speedPercent > 100)
+  {
+    speedPercent = 100;
+  }
+
+  decorativeSpeed = speedPercent;
+
+  applySpeedToEffects();
+
+  Serial.print(
+    "Decorative speed: "
+  );
+
+  Serial.print(
+    decorativeSpeed
+  );
+
+  Serial.println("%");
+}
+
+uint8_t
+DecorativeEffectManager::getSpeed() const
+{
+  return decorativeSpeed;
+}
+
+void DecorativeEffectManager::increaseSpeed(
+  uint8_t amount
+)
+{
+  uint16_t newSpeed =
+    decorativeSpeed + amount;
+
+  if (newSpeed > 100)
+  {
+    newSpeed = 100;
+  }
+
+  setSpeed(
+    static_cast<uint8_t>(
+      newSpeed
+    )
+  );
+}
+
+void DecorativeEffectManager::decreaseSpeed(
+  uint8_t amount
+)
+{
+  int16_t newSpeed =
+    decorativeSpeed - amount;
+
+  if (newSpeed < 1)
+  {
+    newSpeed = 1;
+  }
+
+  setSpeed(
+    static_cast<uint8_t>(
+      newSpeed
+    )
+  );
+}
+
+void DecorativeEffectManager::
+applySpeedToEffects()
+{
+  rainbowEffect.setSpeed(
+    decorativeSpeed
+  );
+
+  rowLedSyncEffect.setSpeed(
+    decorativeSpeed
+  );
+
+  groupFillWaveEffect.setSpeed(
+    decorativeSpeed
+  );
+
+  breathingEffect.setSpeed(
+    decorativeSpeed
+  );
+
+  colorCycleEffect.setSpeed(
+    decorativeSpeed
+  );
+
+  auroraEffect.setSpeed(
+    decorativeSpeed
+  );
+
+  oceanWaveEffect.setSpeed(
+    decorativeSpeed
+  );
+}
+
+void DecorativeEffectManager::clear()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  leds->setEffectBrightness(
+    255
+  );
+
+  leds->clear();
+}
+
+void DecorativeEffectManager::
+selectCurrentEffect()
+{
+  switch (currentEffectType)
+  {
+    case DecorativeEffectType::StaticColor:
+      currentEffect =
+        &staticColorEffect;
+      break;
+
+    case DecorativeEffectType::Breathing:
+      currentEffect =
+        &breathingEffect;
+      break;
+
+    case DecorativeEffectType::Rainbow:
+      currentEffect =
+        &rainbowEffect;
+      break;
+
+    case DecorativeEffectType::RowLedSync:
+      currentEffect =
+        &rowLedSyncEffect;
+      break;
+
+    case DecorativeEffectType::GroupFillWave:
+      currentEffect =
+        &groupFillWaveEffect;
+      break;
+
+    case DecorativeEffectType::ColorCycle:
+      currentEffect =
+        &colorCycleEffect;
+      break;
+
+    case DecorativeEffectType::Aurora:
+      currentEffect =
+        &auroraEffect;
+      break;
+
+    case DecorativeEffectType::OceanWave:
+      currentEffect =
+        &oceanWaveEffect;
+      break;
+
+    default:
+      currentEffectType =
+        DecorativeEffectType::StaticColor;
+
+      currentEffect =
+        &staticColorEffect;
+      break;
+  }
+}

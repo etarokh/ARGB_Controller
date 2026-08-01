@@ -1,0 +1,56 @@
+#pragma once
+
+#include <Arduino.h>
+
+#include "LedManager.h"
+#include "EffectManager.h"
+#include "DecorativeEffectManager.h"
+
+enum class SystemMode {
+  Decorative,
+  Off
+};
+
+class ModeManager {
+public:
+  void begin(
+    LedManager* ledManager,
+    EffectManager* monitoringManager,
+    DecorativeEffectManager* decorativeManager
+  );
+
+  void update();
+
+  void setMode(SystemMode mode);
+
+  SystemMode getMode() const;
+
+  void nextMode();
+
+  bool isAlertOverrideActive() const;
+
+  void snoozeAlertsFor24Hours();
+  bool areAlertsSnoozed() const;
+
+  const char* getModeName() const;
+
+private:
+  void applyMode();
+
+  LedManager* leds = nullptr;
+
+  EffectManager* monitoring = nullptr;
+
+  DecorativeEffectManager* decorative = nullptr;
+
+  SystemMode currentMode =
+    SystemMode::Off;
+
+  bool alertOverrideActive = false;
+
+  bool alertSnoozeActive = false;
+  unsigned long alertSnoozeStartedAt = 0;
+
+  static constexpr unsigned long ALERT_SNOOZE_MS =
+    24UL * 60UL * 60UL * 1000UL;
+};

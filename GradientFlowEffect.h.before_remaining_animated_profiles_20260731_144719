@@ -1,0 +1,53 @@
+#pragma once
+
+#include <Arduino.h>
+#include <FastLED.h>
+
+#include "AnimatedHueEffect.h"
+
+class GradientFlowEffect :
+  public AnimatedHueEffect
+{
+public:
+  void nextPattern();
+
+  uint8_t getPattern() const;
+
+  const char* getPatternName() const;
+
+protected:
+  void renderFrame() override;
+
+  uint32_t
+  getSlowestIntervalMs() const override
+  {
+    return 180;
+  }
+
+  uint32_t
+  getFastestIntervalMs() const override
+  {
+    return 6;
+  }
+
+  uint8_t getHueStep() const override
+  {
+    return 1;
+  }
+
+private:
+  static constexpr uint8_t
+    PATTERN_COUNT = 4;
+
+  uint8_t patternIndex = 0;
+
+  uint8_t calculateHueOffset(
+    uint8_t groupIndex,
+    uint16_t ledIndex
+  ) const;
+
+  uint8_t calculateBrightness(
+    uint8_t groupIndex,
+    uint16_t ledIndex
+  ) const;
+};

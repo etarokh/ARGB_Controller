@@ -1,0 +1,276 @@
+#include "CometEffect.h"
+
+#include "Config.h"
+#include "SpeedCurve.h"
+
+void CometEffect::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+
+  setSpeed(50);
+
+  reset();
+}
+
+void CometEffect::update()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const unsigned long currentTime =
+    millis();
+
+  if (
+    currentTime - lastUpdateTime <
+      updateIntervalMs
+  )
+  {
+    return;
+  }
+
+  lastUpdateTime = currentTime;
+
+  advanceWave();
+
+  render();
+}
+
+void CometEffect::reset()
+{
+  headPosition = 0;
+
+  movementDirection = 1;
+
+  hue = 0;
+
+  lastUpdateTime = 0;
+
+  render();
+}
+
+void CometEffect::setColor(
+  const CRGB& color
+)
+{
+  // This effect generates its own colors.
+  (void)color;
+}
+
+void CometEffect::setSpeed(
+  uint8_t speedPercent
+)
+{
+  speed = constrain(
+    speedPercent,
+    1,
+    100
+  );
+
+  updateInterval();
+}
+
+uint8_t CometEffect::getSpeed() const
+{
+  return speed;
+}
+
+void CometEffect::advanceWave()
+{
+  headPosition += movementDirection;
+
+  if (
+    headPosition >=
+      static_cast<int16_t>(
+        LED_COUNT_TOTAL - 1
+      )
+  )
+  {
+    headPosition =
+      LED_COUNT_TOTAL - 1;
+
+    movementDirection = -1;
+
+    hue += 17;
+
+    return;
+  }
+
+  if (headPosition <= 0)
+  {
+    headPosition = 0;
+
+    movementDirection = 1;
+
+    hue += 17;
+  }
+}
+
+void CometEffect::render()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  clearAllPixels();
+
+  for (
+    uint8_t tailOffset = 0;
+    tailOffset <= TAIL_LENGTH;
+    tailOffset++
+  )
+  {
+    int16_t pixelPosition;
+
+    if (movementDirection > 0)
+    {
+      pixelPosition =
+        headPosition -
+        tailOffset;
+    }
+    else
+    {
+      pixelPosition =
+        headPosition +
+        tailOffset;
+    }
+
+    if (
+      pixelPosition < 0 ||
+      pixelPosition >=
+        static_cast<int16_t>(
+          LED_COUNT_TOTAL
+        )
+    )
+    {
+      continue;
+    }
+
+    const uint8_t brightness =
+      map(
+        tailOffset,
+        0,
+        TAIL_LENGTH,
+        255,
+        18
+      );
+
+    const uint8_t tailHue =
+      hue +
+      (
+        tailOffset * 2
+      );
+
+    CRGB pixelColor =
+      CHSV(
+        tailHue,
+        255,
+        255
+      );
+
+    pixelColor.nscale8_video(
+      brightness
+    );
+
+    setGlobalPixel(
+      static_cast<uint16_t>(
+        pixelPosition
+      ),
+      pixelColor
+    );
+  }
+
+  leds->setEffectBrightness(255);
+
+  leds->show();
+}
+
+void CometEffect::clearAllPixels()
+{
+  for (
+    uint16_t globalIndex = 0;
+    globalIndex < LED_COUNT_TOTAL;
+    globalIndex++
+  )
+  {
+    setGlobalPixel(
+      globalIndex,
+      CRGB::Black
+    );
+  }
+}
+
+void CometEffect::setGlobalPixel(
+  uint16_t globalIndex,
+  const CRGB& color
+)
+{
+  if (globalIndex < LED_COUNT_HDD)
+  {
+    CRGB* group =
+      leds->getHddLeds();
+
+    if (group != nullptr)
+    {
+      group[globalIndex] = color;
+    }
+
+    return;
+  }
+
+  globalIndex -= LED_COUNT_HDD;
+
+  if (globalIndex < LED_COUNT_CPU)
+  {
+    CRGB* group =
+      leds->getCpuLeds();
+
+    if (group != nullptr)
+    {
+      group[globalIndex] = color;
+    }
+
+    return;
+  }
+
+  globalIndex -= LED_COUNT_CPU;
+
+  if (globalIndex < LED_COUNT_INTAKE)
+  {
+    CRGB* group =
+      leds->getIntakeLeds();
+
+    if (group != nullptr)
+    {
+      group[globalIndex] = color;
+    }
+
+    return;
+  }
+
+  globalIndex -= LED_COUNT_INTAKE;
+
+  if (globalIndex < LED_COUNT_EXHAUST)
+  {
+    CRGB* group =
+      leds->getExhaustLeds();
+
+    if (group != nullptr)
+    {
+      group[globalIndex] = color;
+    }
+  }
+}
+
+void CometEffect::updateInterval()
+{
+  updateIntervalMs =
+    SpeedCurve::interval(
+      speed,
+      SpeedProfile::Continuous
+    );
+}

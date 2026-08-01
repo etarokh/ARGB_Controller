@@ -1,0 +1,533 @@
+#include "CommandParser.h"
+
+#include <stdlib.h>
+#include <string.h>
+
+void CommandParser::begin(
+  EffectManager* effectManager,
+  ModeManager* modeManager
+)
+{
+  effects = effectManager;
+  modes = modeManager;
+
+  inputLength = 0;
+  bufferOverflow = false;
+  inputBuffer[0] = '\0';
+
+  Serial.println(
+    "SERIAL_PARSER_READY"
+  );
+
+  Serial.println(
+    "READY"
+  );
+}
+
+void CommandParser::update()
+{
+  while (Serial.available() > 0)
+  {
+    const char incoming =
+      static_cast<char>(Serial.read());
+
+    if (incoming == '\r')
+    {
+      continue;
+    }
+
+    if (incoming == '\n')
+    {
+      if (bufferOverflow)
+      {
+        printError(
+          "COMMAND_TOO_LONG"
+        );
+      }
+      else if (inputLength > 0)
+      {
+        inputBuffer[inputLength] = '\0';
+        processLine(inputBuffer);
+      }
+
+      inputLength = 0;
+      bufferOverflow = false;
+      inputBuffer[0] = '\0';
+
+      continue;
+    }
+
+    if (bufferOverflow)
+    {
+      continue;
+    }
+
+    if (
+      inputLength <
+      BUFFER_SIZE - 1
+    )
+    {
+      inputBuffer[inputLength] =
+        incoming;
+
+      inputLength++;
+    }
+    else
+    {
+      bufferOverflow = true;
+    }
+  }
+}
+
+void CommandParser::processLine(
+  char* line
+)
+{
+  if (effects == nullptr)
+  {
+    printError(
+      "PARSER_NOT_INITIALIZED"
+    );
+    return;
+  }
+
+  MonitorState cpuHardwareState = MonitorState::Normal;
+  MonitorState cpuSoftwareState = MonitorState::Normal;
+  MonitorState cpuSystemState = MonitorState::Normal;
+
+  MonitorState serviceHardwareState = MonitorState::Normal;
+  MonitorState serviceSoftwareState = MonitorState::Normal;
+  MonitorState serviceSystemState = MonitorState::Normal;
+
+  MonitorState networkState;
+
+  MonitorState diskHardwareStates[
+    EffectManager::DISK_COUNT
+  ];
+
+  MonitorState diskSoftwareStates[
+    EffectManager::DISK_COUNT
+  ];
+
+  MonitorState diskSystemStates[
+    EffectManager::DISK_COUNT
+  ] = {
+    MonitorState::Normal,
+    MonitorState::Normal,
+    MonitorState::Normal,
+    MonitorState::Normal
+  };
+
+  bool cpuHardwareFound = false;
+  bool cpuSoftwareFound = false;
+  bool cpuSystemFound = false;
+
+  bool serviceHardwareFound = false;
+  bool serviceSoftwareFound = false;
+  bool serviceSystemFound = false;
+
+  bool networkFound = false;
+  bool timeFound = false;
+
+  uint64_t unixTime = 0;
+
+  bool diskHardwareFound[
+    EffectManager::DISK_COUNT
+  ] = {
+    false,
+    false,
+    false,
+    false
+  };
+
+  bool diskSoftwareFound[
+    EffectManager::DISK_COUNT
+  ] = {
+    false,
+    false,
+    false,
+    false
+  };
+
+  bool diskSystemFound[
+    EffectManager::DISK_COUNT
+  ] = {
+    false,
+    false,
+    false,
+    false
+  };
+
+  char* savePointer = nullptr;
+
+  char* token = strtok_r(
+    line,
+    ";",
+    &savePointer
+  );
+
+  while (token != nullptr)
+  {
+    char* separator =
+      strchr(token, '=');
+
+    if (separator == nullptr)
+    {
+      printError(
+        "INVALID_TOKEN"
+      );
+      return;
+    }
+
+    *separator = '\0';
+
+    const char* key = token;
+    const char* value =
+      separator + 1;
+
+    if (strcmp(key, "TIME") == 0)
+    {
+      if (timeFound)
+      {
+        printError(
+          "DUPLICATE_TIME"
+        );
+        return;
+      }
+
+      if (
+        !parseUnixTime(
+          value,
+          unixTime
+        )
+      )
+      {
+        printError(
+          "INVALID_TIME"
+        );
+        return;
+      }
+
+      timeFound = true;
+    }
+    else
+    {
+      MonitorState parsedState;
+
+      if (
+        !parseState(
+          value,
+          parsedState
+        )
+      )
+      {
+        printError(
+          "INVALID_STATE"
+        );
+        return;
+      }
+
+      if (strcmp(key, "CPUHW") == 0)
+      {
+        cpuHardwareState = parsedState;
+        cpuHardwareFound = true;
+      }
+      else if (strcmp(key, "CPUSW") == 0)
+      {
+        cpuSoftwareState = parsedState;
+        cpuSoftwareFound = true;
+      }
+      else if (strcmp(key, "CPUSYS") == 0)
+      {
+        cpuSystemState = parsedState;
+        cpuSystemFound = true;
+      }
+      else if (strcmp(key, "NET") == 0)
+      {
+        if (networkFound)
+        {
+          printError(
+            "DUPLICATE_NET"
+          );
+          return;
+        }
+
+        networkState = parsedState;
+        networkFound = true;
+      }
+      else if (strcmp(key, "SERVICEHW") == 0)
+      {
+        serviceHardwareState = parsedState;
+        serviceHardwareFound = true;
+      }
+      else if (strcmp(key, "SERVICESW") == 0)
+      {
+        serviceSoftwareState = parsedState;
+        serviceSoftwareFound = true;
+      }
+      else if (strcmp(key, "SERVICESYS") == 0)
+      {
+        serviceSystemState = parsedState;
+        serviceSystemFound = true;
+      }
+      else if (
+        key[0] == 'B' &&
+        key[1] >= '1' &&
+        key[1] <= '4' &&
+        key[2] == 'H' &&
+        key[3] == 'W'
+      )
+      {
+        const uint8_t diskIndex =
+          static_cast<uint8_t>(
+            key[1] - '1'
+          );
+
+        diskHardwareStates[diskIndex] =
+          parsedState;
+
+        diskHardwareFound[diskIndex] =
+          true;
+      }
+      else if (
+        key[0] == 'B' &&
+        key[1] >= '1' &&
+        key[1] <= '4' &&
+        key[2] == 'S' &&
+        key[3] == 'W'
+      )
+      {
+        const uint8_t diskIndex =
+          static_cast<uint8_t>(
+            key[1] - '1'
+          );
+
+        diskSoftwareStates[diskIndex] =
+          parsedState;
+
+        diskSoftwareFound[diskIndex] =
+          true;
+      }
+      else if (
+        key[0] == 'B' &&
+        key[1] >= '1' &&
+        key[1] <= '4' &&
+        key[2] == 'S' &&
+        key[3] == 'Y' &&
+        key[4] == 'S'
+      )
+      {
+        const uint8_t diskIndex =
+          static_cast<uint8_t>(
+            key[1] - '1'
+          );
+
+        diskSystemStates[diskIndex] =
+          parsedState;
+
+        diskSystemFound[diskIndex] =
+          true;
+      }
+      else
+      {
+        printError(
+          "UNKNOWN_KEY"
+        );
+        return;
+      }
+    }
+
+    token = strtok_r(
+      nullptr,
+      ";",
+      &savePointer
+    );
+  }
+
+  if (
+    !cpuHardwareFound ||
+    !cpuSoftwareFound ||
+    !networkFound
+  )
+  {
+    printError(
+      "INCOMPLETE_SNAPSHOT"
+    );
+    return;
+  }
+
+  for (
+    uint8_t i = 0;
+    i < EffectManager::DISK_COUNT;
+    i++
+  )
+  {
+    if (
+      !diskHardwareFound[i] ||
+      !diskSoftwareFound[i]
+    )
+    {
+      printError(
+        "INCOMPLETE_SNAPSHOT"
+      );
+      return;
+    }
+  }
+
+  if (
+    timeFound &&
+    modes != nullptr
+  )
+  {
+    modes->setUnixTime(
+      unixTime
+    );
+  }
+
+  effects->setCpuHardwareState(
+    cpuHardwareState
+  );
+
+  effects->setCpuSoftwareState(
+    cpuSoftwareState
+  );
+
+  effects->setCpuSystemState(
+    cpuSystemState
+  );
+
+  effects->setNetworkState(
+    networkState
+  );
+
+  effects->setServiceHardwareState(
+    serviceHardwareState
+  );
+
+  effects->setServiceSoftwareState(
+    serviceSoftwareState
+  );
+
+  effects->setServiceSystemState(
+    serviceSystemState
+  );
+
+  for (
+    uint8_t i = 0;
+    i < EffectManager::DISK_COUNT;
+    i++
+  )
+  {
+    effects->setDiskHardwareState(
+      i,
+      diskHardwareStates[i]
+    );
+
+    effects->setDiskSoftwareState(
+      i,
+      diskSoftwareStates[i]
+    );
+
+    effects->setDiskSystemState(
+      i,
+      diskSystemStates[i]
+    );
+  }
+
+  Serial.println(
+    "ACK"
+  );
+}
+
+bool CommandParser::parseState(
+  const char* value,
+  MonitorState& state
+) const
+{
+  if (
+    value == nullptr ||
+    value[0] == '\0' ||
+    value[1] != '\0'
+  )
+  {
+    return false;
+  }
+
+  switch (value[0])
+  {
+    case 'N':
+      state =
+        MonitorState::Normal;
+      return true;
+
+    case 'W':
+      state =
+        MonitorState::Warning;
+      return true;
+
+    case 'C':
+      state =
+        MonitorState::Critical;
+      return true;
+
+    case 'O':
+      state =
+        MonitorState::Offline;
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+bool CommandParser::parseUnixTime(
+  const char* value,
+  uint64_t& unixTime
+) const
+{
+  if (
+    value == nullptr ||
+    value[0] == '\0'
+  )
+  {
+    return false;
+  }
+
+  char* endPointer = nullptr;
+
+  unsigned long long parsed =
+    strtoull(
+      value,
+      &endPointer,
+      10
+    );
+
+  if (
+    endPointer == value ||
+    *endPointer != '\0' ||
+    parsed < 1000000000ULL
+  )
+  {
+    return false;
+  }
+
+  unixTime =
+    static_cast<uint64_t>(
+      parsed
+    );
+
+  return true;
+}
+
+void CommandParser::printError(
+  const char* message
+) const
+{
+  Serial.print(
+    "ERR:"
+  );
+
+  Serial.println(
+    message
+  );
+}

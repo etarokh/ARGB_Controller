@@ -1,0 +1,129 @@
+#include "BreathingEffect.h"
+#include "SpeedCurve.h"
+
+void BreathingEffect::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+
+  effectColor = CRGB::Blue;
+
+  setSpeed(50);
+
+  reset();
+}
+
+void BreathingEffect::update()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const unsigned long currentTime =
+    millis();
+
+  if (
+    currentTime - lastUpdateTime <
+      updateIntervalMs
+  )
+  {
+    return;
+  }
+
+  lastUpdateTime = currentTime;
+
+  int16_t nextBrightness =
+    currentBrightness +
+    (
+      brightnessDirection *
+      BRIGHTNESS_STEP
+    );
+
+  if (nextBrightness >= 255)
+  {
+    nextBrightness = 255;
+    brightnessDirection = -1;
+  }
+
+  if (
+    nextBrightness <=
+      MIN_BRIGHTNESS
+  )
+  {
+    nextBrightness =
+      MIN_BRIGHTNESS;
+
+    brightnessDirection = 1;
+  }
+
+  currentBrightness =
+    static_cast<uint8_t>(
+      nextBrightness
+    );
+
+  leds->setEffectBrightness(
+    currentBrightness
+  );
+
+  leds->setAll(effectColor);
+  leds->show();
+}
+
+void BreathingEffect::reset()
+{
+  currentBrightness =
+    MIN_BRIGHTNESS;
+
+  brightnessDirection = 1;
+
+  lastUpdateTime = millis();
+
+  if (leds != nullptr)
+  {
+    leds->setEffectBrightness(
+      currentBrightness
+    );
+
+    leds->setAll(
+      effectColor
+    );
+
+    leds->show();
+  }
+}
+
+void BreathingEffect::setColor(
+  const CRGB& color
+)
+{
+  effectColor = color;
+}
+
+void BreathingEffect::setSpeed(
+  uint8_t speedPercent
+)
+{
+  speed = constrain(
+    speedPercent,
+    1,
+    100
+  );
+
+  updateInterval();
+}
+
+uint8_t BreathingEffect::getSpeed() const
+{
+  return speed;
+}
+
+void BreathingEffect::updateInterval()
+{
+  updateIntervalMs =
+    SpeedCurve::interval(
+      speed,
+      SpeedProfile::Breathing
+    );
+}

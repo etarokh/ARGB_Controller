@@ -1,0 +1,106 @@
+#include "BuzzerManager.h"
+
+void BuzzerManager::begin()
+{
+  pinMode(PIN_BUZZER, OUTPUT);
+  digitalWrite(PIN_BUZZER, LOW);
+
+  previousCriticalActive = false;
+  muted = false;
+  buzzing = false;
+}
+
+void BuzzerManager::update(bool criticalActive)
+{
+  unsigned long now = millis();
+
+  // Critical کاملاً برطرف شده:
+  // Mute برای Critical بعدی ریست می‌شود.
+  if (!criticalActive)
+  {
+    if (buzzing)
+    {
+      stopBuzz();
+    }
+
+    muted = false;
+    previousCriticalActive = false;
+    return;
+  }
+
+  // شروع یک Critical جدید
+  if (!previousCriticalActive)
+  {
+    previousCriticalActive = true;
+
+    if (!muted)
+    {
+      startBuzz();
+    }
+  }
+
+  // پایان بوق دوثانیه‌ای
+  if (
+    buzzing &&
+    now - buzzStartedAt >= BUZZ_DURATION_MS
+  )
+  {
+    stopBuzz();
+  }
+
+  // تکرار هر چهار ساعت، مگر اینکه Mute شده باشد
+  if (
+    !muted &&
+    !buzzing &&
+    now - lastBuzzStartedAt >= REPEAT_INTERVAL_MS
+  )
+  {
+    startBuzz();
+  }
+}
+
+void BuzzerManager::mute()
+{
+  muted = true;
+
+  if (buzzing)
+  {
+    stopBuzz();
+  }
+}
+
+void BuzzerManager::beep(unsigned long durationMs)
+{
+  digitalWrite(PIN_BUZZER, HIGH);
+  delay(durationMs);
+  digitalWrite(PIN_BUZZER, LOW);
+
+  Serial.println("BUZZER: Confirmation beep");
+}
+
+bool BuzzerManager::isMuted() const
+{
+  return muted;
+}
+
+bool BuzzerManager::isBuzzing() const
+{
+  return buzzing;
+}
+
+void BuzzerManager::startBuzz()
+{
+  digitalWrite(PIN_BUZZER, HIGH);
+
+  buzzing = true;
+  buzzStartedAt = millis();
+  lastBuzzStartedAt = buzzStartedAt;
+
+  Serial.println("BUZZER: Critical alarm");
+}
+
+void BuzzerManager::stopBuzz()
+{
+  digitalWrite(PIN_BUZZER, LOW);
+  buzzing = false;
+}

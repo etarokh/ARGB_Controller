@@ -1,0 +1,25 @@
+#pragma once
+
+#include <Arduino.h>
+#include <FastLED.h>
+
+#include "DecorativeEffect.h"
+#include "LedManager.h"
+
+class StaticColorEffect : public DecorativeEffect {
+public:
+  void begin(LedManager* ledManager) override;
+
+  void update() override;
+
+  void reset() override;
+
+  void setColor(const CRGB& color) override;
+
+private:
+  LedManager* leds = nullptr;
+
+  CRGB effectColor = CRGB::Black;
+
+  bool needsRender = true;
+};

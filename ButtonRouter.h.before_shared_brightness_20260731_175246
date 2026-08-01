@@ -1,0 +1,132 @@
+#pragma once
+
+#include <Arduino.h>
+
+#include "ButtonManager.h"
+#include "BuzzerManager.h"
+#include "LedManager.h"
+#include "EffectManager.h"
+#include "DecorativeEffectManager.h"
+#include "SettingsManager.h"
+#include "BrightnessManager.h"
+#include "MonitorManager.h"
+#include "ModeManager.h"
+
+class ButtonRouter
+{
+public:
+  void begin(
+    ButtonManager* buttonManager,
+    BuzzerManager* buzzerManager,
+    LedManager* ledManager,
+    EffectManager* effectManager,
+    DecorativeEffectManager* decorativeManager,
+    SettingsManager* settingsMenuManager,
+    BrightnessManager* brightnessControlManager,
+    MonitorManager* monitorModeManager,
+    ModeManager* systemModeManager
+  );
+
+  void update();
+
+private:
+  ButtonManager* button = nullptr;
+  BuzzerManager* buzzer = nullptr;
+  LedManager* leds = nullptr;
+  EffectManager* effects = nullptr;
+  DecorativeEffectManager* decorative = nullptr;
+  SettingsManager* settings = nullptr;
+  BrightnessManager* brightness = nullptr;
+  MonitorManager* monitorManager = nullptr;
+
+  enum class DecorativeAdjustment
+  {
+    None,
+    Brightness,
+    Speed
+  };
+
+  DecorativeAdjustment decorativeAdjustment =
+    DecorativeAdjustment::None;
+
+  bool decorativeSpeedIncreasing = false;
+
+  unsigned long lastDecorativeSpeedAdjustmentAt = 0;
+
+  ModeManager* modeManager = nullptr;
+
+  bool isAlertContextActive() const;
+
+  void handleAlertContext(
+    bool singlePress,
+    bool doublePress,
+    bool triplePress,
+    bool quadruplePress,
+    bool longPress,
+    bool snooze24HoursPress,
+    bool snooze30DaysPress,
+    bool snooze6MonthsPress,
+    bool threshold24HourReached,
+    bool threshold30DayReached,
+    bool threshold6MonthReached
+  );
+
+  void handleDecorativeContext(
+    bool singlePress,
+    bool doublePress,
+    bool triplePress,
+    bool quadruplePress,
+    bool longPress,
+    bool snooze24HoursPress,
+    bool snooze30DaysPress,
+    bool snooze6MonthsPress
+  );
+
+  void handleSettingsContext(
+    bool singlePress,
+    bool doublePress,
+    bool triplePress,
+    bool quadruplePress,
+    bool longPress,
+    bool snooze24HoursPress,
+    bool snooze30DaysPress,
+    bool snooze6MonthsPress
+  );
+
+  void handleMonitorContext(
+    bool singlePress,
+    bool doublePress,
+    bool triplePress,
+    bool quadruplePress,
+    bool longPress,
+    bool snooze24HoursPress,
+    bool snooze30DaysPress,
+    bool snooze6MonthsPress
+  );
+
+  void handleOffContext(
+    bool singlePress,
+    bool doublePress,
+    bool triplePress,
+    bool quadruplePress,
+    bool longPress,
+    bool snooze24HoursPress,
+    bool snooze30DaysPress,
+    bool snooze6MonthsPress
+  );
+
+  void playSnoozeAnimation(
+    uint8_t beepCount,
+    uint8_t flashCount,
+    const CRGB& flashColor
+  );
+
+  void printDecorativeStatus();
+
+  void flashDecorativeSpeedBoundary();
+
+  void logReserved(
+    const char* context,
+    const char* gesture
+  );
+};

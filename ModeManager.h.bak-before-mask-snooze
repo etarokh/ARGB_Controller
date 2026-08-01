@@ -1,0 +1,67 @@
+#pragma once
+
+#include <Arduino.h>
+#include <Preferences.h>
+
+#include "LedManager.h"
+#include "EffectManager.h"
+#include "DecorativeEffectManager.h"
+
+enum class SystemMode {
+  Decorative,
+  Off
+};
+
+class ModeManager {
+public:
+  void begin(
+    LedManager* ledManager,
+    EffectManager* monitoringManager,
+    DecorativeEffectManager* decorativeManager
+  );
+
+  void update();
+
+  void setMode(SystemMode mode);
+  SystemMode getMode() const;
+  void nextMode();
+
+  bool isAlertOverrideActive() const;
+
+  void setUnixTime(uint64_t unixTime);
+  bool hasValidUnixTime() const;
+
+  void snoozeAlertsFor24Hours();
+  bool areAlertsSnoozed() const;
+
+  const char* getModeName() const;
+
+private:
+  void applyMode();
+  void clearStoredSnooze();
+
+  LedManager* leds = nullptr;
+  EffectManager* monitoring = nullptr;
+  DecorativeEffectManager* decorative = nullptr;
+
+  Preferences preferences;
+  bool preferencesReady = false;
+
+  SystemMode currentMode =
+    SystemMode::Off;
+
+  bool alertOverrideActive = false;
+  bool alertSnoozeActive = false;
+
+  bool unixTimeValid = false;
+  uint64_t currentUnixTime = 0;
+  uint64_t alertSnoozeUntilUnix = 0;
+
+  unsigned long fallbackSnoozeStartedAt = 0;
+
+  static constexpr uint64_t ALERT_SNOOZE_SECONDS =
+    24ULL * 60ULL * 60ULL;
+
+  static constexpr unsigned long ALERT_SNOOZE_MS =
+    24UL * 60UL * 60UL * 1000UL;
+};

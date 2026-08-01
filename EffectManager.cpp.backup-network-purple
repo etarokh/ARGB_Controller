@@ -1,0 +1,934 @@
+#include "EffectManager.h"
+
+void EffectManager::begin(LedManager* ledManager) {
+  leds = ledManager;
+
+  cpuAlert.hardware = MonitorState::Normal;
+  cpuAlert.software = MonitorState::Normal;
+  cpuAlert.system = MonitorState::Normal;
+
+  serviceAlert.hardware = MonitorState::Normal;
+  serviceAlert.software = MonitorState::Normal;
+  serviceAlert.system = MonitorState::Normal;
+
+  for (uint8_t i = 0; i < DISK_COUNT; i++) {
+     diskAlerts[i].hardware = MonitorState::Normal;
+     diskAlerts[i].software = MonitorState::Normal;
+     diskAlerts[i].system = MonitorState::Normal;  
+  }
+
+  resetBlinkSequence();
+
+  needsRender = true;
+  render();
+}
+
+void EffectManager::update() {
+  if (queueNeedsRebuild) {
+    rebuildAlertQueue();
+  }
+
+  updateMonitorBlink();
+  updateServiceBlink();
+  updateNetworkBlink();
+  updatePoolBlink();
+  updateHddBlink();
+
+  if (needsRender) {
+    render();
+  }
+}
+
+void EffectManager::setDefaultColor(const CRGB& color) {
+  defaultColor = color;
+  needsRender = true;
+}
+
+void EffectManager::setNetworkState(MonitorState state) {
+  if (networkState == state) {
+    return;
+  }
+
+  networkState = state;
+  networkLedOn = true;
+  lastNetworkBlinkChange = millis();
+  needsRender = true;
+}
+
+void EffectManager::setCpuState(MonitorState state) {
+  if (cpuState == state) {
+    return;
+  }
+
+  cpuState = state;
+  monitorLedOn = true;
+  lastMonitorBlinkChange = millis();
+  needsRender = true;
+}
+
+
+void EffectManager::setCpuHardwareState(
+  MonitorState state
+) {
+  if (cpuAlert.hardware == state) {
+    return;
+  }
+
+  cpuAlert.hardware = state;
+
+  monitorLedOn = true;
+  lastMonitorBlinkChange = millis();
+  needsRender = true;
+}
+
+
+void EffectManager::setPoolSoftwareState(
+  MonitorState state
+) {
+  if (poolSoftwareState == state) {
+    return;
+  }
+
+  poolSoftwareState = state;
+
+  needsRender = true;
+}
+
+
+void EffectManager::setCpuSoftwareState(
+  MonitorState state
+) {
+  if (cpuAlert.software == state) {
+    return;
+  }
+
+  cpuAlert.software = state;
+
+  monitorLedOn = true;
+  lastMonitorBlinkChange = millis();
+  needsRender = true;
+}
+
+void EffectManager::setCpuSystemState(
+  MonitorState state
+) {
+  if (cpuAlert.system == state) {
+    return;
+  }
+
+  cpuAlert.system = state;
+
+  monitorLedOn = true;
+  lastMonitorBlinkChange = millis();
+  needsRender = true;
+}
+
+
+
+void EffectManager::setServiceHardwareState(
+  MonitorState state
+) {
+  if (serviceAlert.hardware == state) {
+    return;
+  }
+
+  serviceAlert.hardware = state;
+  needsRender = true;
+}
+
+
+void EffectManager::setServiceSoftwareState(
+  MonitorState state
+) {
+  if (serviceAlert.software == state) {
+    return;
+  }
+
+  serviceAlert.software = state;
+  needsRender = true;
+}
+
+
+void EffectManager::setServiceSystemState(
+  MonitorState state
+) {
+  if (serviceAlert.system == state) {
+    return;
+  }
+
+  serviceAlert.system = state;
+  needsRender = true;
+}
+
+
+void EffectManager::setDiskState(
+  uint8_t diskIndex,
+  MonitorState state
+) {
+  if (diskIndex >= DISK_COUNT) {
+    return;
+  }
+
+  if (diskStates[diskIndex] == state) {
+    return;
+  }
+
+  diskStates[diskIndex] = state;
+
+  queueNeedsRebuild = true;
+  resetBlinkSequence();
+  needsRender = true;
+}
+
+
+void EffectManager::setDiskHardwareState(
+  uint8_t diskIndex,
+  MonitorState state
+) {
+  if (diskIndex >= DISK_COUNT) {
+    return;
+  }
+
+  if (diskAlerts[diskIndex].hardware == state) {
+    return;
+  }
+
+  diskAlerts[diskIndex].hardware = state;
+
+  queueNeedsRebuild = true;
+  resetBlinkSequence();
+  needsRender = true;
+}
+
+
+void EffectManager::setDiskSoftwareState(
+  uint8_t diskIndex,
+  MonitorState state
+) {
+  if (diskIndex >= DISK_COUNT) {
+    return;
+  }
+
+  if (diskAlerts[diskIndex].software == state) {
+    return;
+  }
+
+  diskAlerts[diskIndex].software = state;
+
+  queueNeedsRebuild = true;
+  resetBlinkSequence();
+  needsRender = true;
+}
+
+void EffectManager::setDiskSystemState(
+  uint8_t diskIndex,
+  MonitorState state
+) {
+  if (diskIndex >= DISK_COUNT) {
+    return;
+  }
+
+  if (diskAlerts[diskIndex].system == state) {
+    return;
+  }
+
+  diskAlerts[diskIndex].system = state;
+
+  Serial.print("SYSTEM ALERT DISK ");
+  Serial.print(diskIndex + 1);
+  Serial.print(" STATE ");
+  Serial.println((int)state);
+
+  queueNeedsRebuild = true;
+  resetBlinkSequence();
+  needsRender = true;
+}
+
+
+MonitorState EffectManager::getDiskState(
+  uint8_t diskIndex
+) const {
+  if (diskIndex >= DISK_COUNT) {
+    return MonitorState::Offline;
+  }
+
+  return diskStates[diskIndex];
+}
+
+void EffectManager::setAllDisksState(MonitorState state) {
+  bool changed = false;
+
+  for (uint8_t i = 0; i < DISK_COUNT; i++) {
+    if (diskStates[i] != state) {
+      diskStates[i] = state;
+      changed = true;
+    }
+  }
+
+  if (!changed) {
+    return;
+  }
+
+  queueNeedsRebuild = true;
+  resetBlinkSequence();
+  needsRender = true;
+}
+
+void EffectManager::setEnabled(bool newEnabled) {
+  enabled = newEnabled;
+  needsRender = true;
+}
+
+bool EffectManager::isEnabled() const {
+  return enabled;
+}
+
+bool EffectManager::hasActiveAlert() const {
+  if (networkState != MonitorState::Normal) {
+    return true;
+  }
+
+  if (cpuAlert.hardware != MonitorState::Normal ||
+      cpuAlert.software != MonitorState::Normal ||
+      cpuAlert.system != MonitorState::Normal) {
+    return true;
+  }
+
+  for (uint8_t i = 0; i < DISK_COUNT; i++) {
+    if (diskAlerts[i].hardware != MonitorState::Normal ||
+        diskAlerts[i].software != MonitorState::Normal ||
+        diskAlerts[i].system != MonitorState::Normal) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool EffectManager::hasCriticalAlert() const {
+  if (networkState == MonitorState::Critical) {
+    return true;
+  }
+
+  if (cpuAlert.hardware == MonitorState::Critical ||
+      cpuAlert.software == MonitorState::Critical ||
+      cpuAlert.system == MonitorState::Critical) {
+    return true;
+  }
+
+  for (uint8_t i = 0; i < DISK_COUNT; i++) {
+    if (diskAlerts[i].hardware == MonitorState::Critical ||
+        diskAlerts[i].software == MonitorState::Critical ||
+        diskAlerts[i].system == MonitorState::Critical) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+uint8_t EffectManager::getActiveAlertMask() const {
+  uint8_t mask = 0;
+
+  if (networkState != MonitorState::Normal) {
+    mask |= (1U << 0);
+  }
+
+  if (cpuAlert.hardware != MonitorState::Normal ||
+      cpuAlert.software != MonitorState::Normal ||
+      cpuAlert.system != MonitorState::Normal) {
+    mask |= (1U << 1);
+  }
+
+  if (serviceAlert.hardware != MonitorState::Normal ||
+      serviceAlert.software != MonitorState::Normal ||
+      serviceAlert.system != MonitorState::Normal) {
+    mask |= (1U << 6);
+  }
+
+  for (uint8_t i = 0; i < DISK_COUNT; i++) {
+    if (diskAlerts[i].hardware != MonitorState::Normal ||
+        diskAlerts[i].software != MonitorState::Normal ||
+        diskAlerts[i].system != MonitorState::Normal) {
+      mask |= (1U << (i + 2));
+    }
+  }
+
+  return mask;
+}
+
+uint8_t EffectManager::getCriticalAlertMask() const {
+  uint8_t mask = 0;
+
+  if (networkState == MonitorState::Critical) {
+    mask |= (1U << 0);
+  }
+
+  if (cpuAlert.hardware == MonitorState::Critical ||
+      cpuAlert.software == MonitorState::Critical ||
+      cpuAlert.system == MonitorState::Critical) {
+    mask |= (1U << 1);
+  }
+
+  for (uint8_t i = 0; i < DISK_COUNT; i++) {
+    if (diskAlerts[i].hardware == MonitorState::Critical ||
+        diskAlerts[i].software == MonitorState::Critical ||
+        diskAlerts[i].system == MonitorState::Critical) {
+      mask |= (1U << (i + 2));
+    }
+  }
+
+  return mask;
+}
+
+uint8_t EffectManager::getHardwareCriticalAlertMask() const {
+  uint8_t mask = 0;
+
+  if (serviceAlert.hardware == MonitorState::Critical) {
+    mask |= (1U << 0);
+  }
+
+  if (cpuAlert.hardware == MonitorState::Critical) {
+    mask |= (1U << 1);
+  }
+
+  for (uint8_t i = 0; i < DISK_COUNT; i++) {
+    if (diskAlerts[i].hardware == MonitorState::Critical) {
+      mask |= (1U << (i + 2));
+    }
+  }
+
+  return mask;
+}
+
+static AlertType resolveAlertType(
+  const AlertState& alert
+)
+{
+  if (alert.hardware == MonitorState::Critical)
+    return AlertType::HardwareCritical;
+
+  if (alert.hardware == MonitorState::Warning)
+    return AlertType::HardwareWarning;
+
+  if (alert.hardware == MonitorState::Offline)
+    return AlertType::HardwareOffline;
+
+  if (alert.software == MonitorState::Critical)
+    return AlertType::SoftwareCritical;
+
+  if (alert.software == MonitorState::Warning)
+    return AlertType::SoftwareWarning;
+
+  if (alert.system == MonitorState::Critical)
+    return AlertType::SystemCritical;
+
+  if (alert.system == MonitorState::Warning)
+    return AlertType::SystemWarning;
+
+  return AlertType::Normal;
+}
+
+AlertType getCpuAlertType(
+  const AlertState& alert
+)
+{
+  return resolveAlertType(alert);
+}
+
+
+CRGB colorForAlertType(
+  AlertType type
+)
+{
+  switch (type) {
+    case AlertType::HardwareWarning:
+      return CRGB::Yellow;
+
+    case AlertType::HardwareCritical:
+    case AlertType::HardwareOffline:
+      return CRGB::Red;
+
+    case AlertType::SoftwareWarning:
+    case AlertType::SoftwareCritical:
+      return CRGB::Purple;
+
+    case AlertType::SystemWarning:
+    case AlertType::SystemCritical:
+      return CRGB(255, 0, 120);
+
+    case AlertType::Normal:
+    default:
+      return CRGB::Blue;
+  }
+}
+
+
+CRGB EffectManager::colorForState(
+  MonitorState state,
+  const CRGB& normalColor
+) const {
+  switch (state) {
+    case MonitorState::Warning:
+      return CRGB::Yellow;
+
+    case MonitorState::Critical:
+      return CRGB::Red;
+
+    case MonitorState::Offline:
+      return CRGB::Purple;
+
+    case MonitorState::Normal:
+    default:
+      return normalColor;
+  }
+}
+
+AlertType getDiskAlertType(
+  const AlertState& alert
+)
+{
+  return resolveAlertType(alert);
+}
+
+
+AlertType getServiceAlertType(
+  const AlertState& alert
+)
+{
+  return resolveAlertType(alert);
+}
+
+
+uint8_t alertPriority(
+  AlertType type
+)
+{
+  switch (type) {
+    case AlertType::HardwareCritical:
+    case AlertType::SoftwareCritical:
+    case AlertType::SystemCritical:
+      return 3;
+
+    case AlertType::HardwareWarning:
+    case AlertType::SoftwareWarning:
+    case AlertType::SystemWarning:
+      return 2;
+
+    case AlertType::HardwareOffline:
+      return 1;
+
+    case AlertType::Normal:
+    default:
+      return 0;
+  }
+}
+
+
+uint8_t EffectManager::statePriority(
+  MonitorState state
+) const {
+  switch (state) {
+    case MonitorState::Critical:
+      return 3;
+
+    case MonitorState::Warning:
+      return 2;
+
+    case MonitorState::Offline:
+      return 1;
+
+    case MonitorState::Normal:
+    default:
+      return 0;
+  }
+}
+
+void EffectManager::rebuildAlertQueue() {
+  alertCount = 0;
+  queuePosition = 0;
+
+  // ابتدا Critical، سپس Warning، سپس Offline
+  for (int priority = 3; priority >= 1; priority--) {
+    for (uint8_t diskIndex = 0;
+         diskIndex < DISK_COUNT;
+         diskIndex++) {
+
+      if (alertPriority(
+            getDiskAlertType(diskAlerts[diskIndex])
+          ) == priority) {
+        alertQueue[alertCount] = diskIndex;
+        alertCount++;
+      }
+    }
+  }
+
+  queueNeedsRebuild = false;
+
+  if (alertCount == 0) {
+    activeDiskIndex = -1;
+    hddLedOn = true;
+    completedBlinks = 0;
+    needsRender = true;
+    return;
+  }
+
+  startCurrentQueueDisk();
+}
+
+void EffectManager::startCurrentQueueDisk() {
+  if (alertCount == 0) {
+    activeDiskIndex = -1;
+    return;
+  }
+
+  if (queuePosition >= alertCount) {
+    queuePosition = 0;
+  }
+
+  activeDiskIndex = alertQueue[queuePosition];
+  completedBlinks = 0;
+  hddLedOn = true;
+  lastBlinkChange = millis();
+
+  needsRender = true;
+}
+
+void EffectManager::moveToNextQueueDisk() {
+  if (alertCount == 0) {
+    activeDiskIndex = -1;
+    return;
+  }
+
+  queuePosition++;
+
+  if (queuePosition >= alertCount) {
+    queuePosition = 0;
+  }
+
+  startCurrentQueueDisk();
+}
+
+void EffectManager::resetBlinkSequence() {
+  activeDiskIndex = -1;
+  queuePosition = 0;
+  completedBlinks = 0;
+  hddLedOn = true;
+  lastBlinkChange = millis();
+}
+
+unsigned long monitorBlinkIntervalForAlert(
+  AlertType type
+)
+{
+  switch (type) {
+    case AlertType::SoftwareCritical:
+    case AlertType::SystemCritical:
+      return 150;
+
+    case AlertType::SoftwareWarning:
+    case AlertType::SystemWarning:
+      return 800;
+
+    case AlertType::HardwareCritical:
+    case AlertType::HardwareWarning:
+    case AlertType::HardwareOffline:
+    default:
+      return 500;
+  }
+}
+
+
+void EffectManager::updateNetworkBlink() {
+  if (networkState == MonitorState::Normal) {
+    if (!networkLedOn) {
+      networkLedOn = true;
+      needsRender = true;
+    }
+    return;
+  }
+
+  unsigned long now = millis();
+
+  unsigned long interval = 500;
+
+  if (now - lastNetworkBlinkChange >= interval) {
+    networkLedOn = !networkLedOn;
+    lastNetworkBlinkChange = now;
+    needsRender = true;
+  }
+}
+
+
+void EffectManager::updateMonitorBlink() {
+  bool hasMonitorAlert =
+    cpuAlert.hardware != MonitorState::Normal ||
+    cpuAlert.software != MonitorState::Normal ||
+    cpuAlert.system != MonitorState::Normal;
+
+  if (!hasMonitorAlert) {
+    if (!monitorLedOn) {
+      monitorLedOn = true;
+      needsRender = true;
+    }
+
+    return;
+  }
+
+  unsigned long now = millis();
+
+  AlertType cpuType = getCpuAlertType(cpuAlert);
+
+  unsigned long interval =
+    monitorBlinkIntervalForAlert(cpuType);
+
+  if (now - lastMonitorBlinkChange >= interval) {
+    monitorLedOn = !monitorLedOn;
+    lastMonitorBlinkChange = now;
+    needsRender = true;
+  }
+}
+
+
+void EffectManager::updateServiceBlink() {
+  bool hasServiceAlert =
+    serviceAlert.hardware != MonitorState::Normal ||
+    serviceAlert.software != MonitorState::Normal ||
+    serviceAlert.system != MonitorState::Normal;
+
+  if (!hasServiceAlert) {
+    if (!serviceLedOn) {
+      serviceLedOn = true;
+      needsRender = true;
+    }
+
+    return;
+  }
+
+  unsigned long now = millis();
+
+  AlertType serviceType =
+    getServiceAlertType(
+      serviceAlert
+    );
+
+  unsigned long interval =
+    monitorBlinkIntervalForAlert(
+      serviceType
+    );
+
+  if (now - lastServiceBlinkChange >= interval) {
+    serviceLedOn = !serviceLedOn;
+    lastServiceBlinkChange = now;
+    needsRender = true;
+  }
+}
+
+
+CRGB EffectManager::blinkingColorForState(
+  MonitorState state
+) const {
+  if (state == MonitorState::Normal) {
+    return defaultColor;
+  }
+
+  if (!monitorLedOn) {
+    return CRGB::Black;
+  }
+
+  return colorForState(state, defaultColor);
+}
+
+
+CRGB EffectManager::blinkingNetworkColorForState(
+  MonitorState state
+) const {
+  if (state == MonitorState::Normal) {
+    return defaultColor;
+  }
+
+  if (!networkLedOn) {
+    return CRGB::Black;
+  }
+
+  return CRGB::HotPink;
+}
+
+unsigned long blinkIntervalForAlert(
+  AlertType type
+)
+{
+  switch (type) {
+    case AlertType::SoftwareCritical:
+    case AlertType::SystemCritical:
+      return 150;
+
+    case AlertType::SoftwareWarning:
+    case AlertType::SystemWarning:
+      return 800;
+
+    case AlertType::HardwareCritical:
+    case AlertType::HardwareWarning:
+    case AlertType::HardwareOffline:
+    default:
+      return 300;
+  }
+}
+
+
+void EffectManager::updatePoolBlink() {
+  if (poolSoftwareState == MonitorState::Normal) {
+    return;
+  }
+
+  unsigned long now = millis();
+
+  unsigned long interval = 800;
+
+  if (poolSoftwareState == MonitorState::Critical) {
+    interval = 250;
+  }
+
+  if (now - lastPoolBlinkChange >= interval) {
+    poolLedOn = !poolLedOn;
+    lastPoolBlinkChange = now;
+    needsRender = true;
+  }
+}
+
+
+void EffectManager::updateHddBlink() {
+  if (alertCount == 0 || activeDiskIndex < 0) {
+    return;
+  }
+
+  unsigned long now = millis();
+  uint8_t requiredBlinks = activeDiskIndex + 1;
+
+  if (hddLedOn) {
+    if (now - lastBlinkChange >= blinkIntervalForAlert(
+          getDiskAlertType(
+            diskAlerts[activeDiskIndex]
+          )
+        )) {
+      hddLedOn = false;
+      completedBlinks++;
+      lastBlinkChange = now;
+      needsRender = true;
+    }
+
+    return;
+  }
+
+  // اگر تعداد چشمک‌های Bay کامل شده، مکث و رفتن به Bay بعدی
+  if (completedBlinks >= requiredBlinks) {
+    if (now - lastBlinkChange >= BETWEEN_DISKS_MS) {
+      moveToNextQueueDisk();
+    }
+
+    return;
+  }
+
+  // هنوز چشمک‌های این Bay تمام نشده
+  if (now - lastBlinkChange >= blinkIntervalForAlert(
+        getDiskAlertType(
+          diskAlerts[activeDiskIndex]
+        )
+      )) {
+    hddLedOn = true;
+    lastBlinkChange = now;
+    needsRender = true;
+  }
+}
+
+void EffectManager::render() {
+  if (leds == nullptr) {
+    return;
+  }
+
+  if (!enabled) {
+    leds->clear();
+    needsRender = false;
+    return;
+  }
+
+  // Group 1: Exhaust / Service
+  if (
+    serviceAlert.hardware != MonitorState::Normal ||
+    serviceAlert.software != MonitorState::Normal ||
+    serviceAlert.system != MonitorState::Normal
+  ) {
+    if (serviceLedOn) {
+      leds->setExhaust(
+        colorForAlertType(
+          getServiceAlertType(
+            serviceAlert
+          )
+        )
+      );
+    } else {
+      leds->setExhaust(
+        CRGB::Black
+      );
+    }
+  } else {
+    leds->setExhaust(
+      defaultColor
+    );
+  }
+
+  // Group 2: Intake / Network
+  leds->setIntake(
+    blinkingNetworkColorForState(networkState)
+  );
+
+  // Group 3: HDD
+  if (poolSoftwareState != MonitorState::Normal) {
+    if (poolLedOn) {
+      leds->setHdd(CRGB::Purple);
+    } else {
+      leds->setHdd(CRGB::Black);
+    }
+  }
+  else if (activeDiskIndex < 0) {
+    leds->setHdd(defaultColor);
+  } else if (hddLedOn) {
+    leds->setHdd(
+      colorForAlertType(
+        getDiskAlertType(
+          diskAlerts[activeDiskIndex]
+        )
+      )
+    );
+  } else {
+    leds->setHdd(CRGB::Black);
+  }
+
+  // Group 4: CPU
+  if (
+    cpuAlert.hardware != MonitorState::Normal ||
+    cpuAlert.software != MonitorState::Normal ||
+    cpuAlert.system != MonitorState::Normal
+  ) {
+
+    if (monitorLedOn) {
+      leds->setCpu(
+        colorForAlertType(
+          getCpuAlertType(
+            cpuAlert
+          )
+        )
+      );
+    } else {
+      leds->setCpu(
+        CRGB::Black
+      );
+    }
+
+  } else {
+    leds->setCpu(defaultColor);
+  }
+
+  leds->show();
+  needsRender = false;
+}

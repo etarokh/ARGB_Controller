@@ -1,0 +1,298 @@
+#include "GroupFillWaveEffect.h"
+#include "Config.h"
+
+void GroupFillWaveEffect::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+
+  setSpeed(50);
+
+  reset();
+}
+
+void GroupFillWaveEffect::update()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const unsigned long currentTime =
+    millis();
+
+  if (
+    currentTime - lastUpdateTime <
+      updateIntervalMs
+  )
+  {
+    return;
+  }
+
+  lastUpdateTime = currentTime;
+
+  advanceStep();
+  render();
+}
+
+void GroupFillWaveEffect::reset()
+{
+  phase = Phase::Fill;
+
+  activeGroup = 0;
+
+  activePixel = 0;
+
+  hue = 0;
+
+  lastUpdateTime = 0;
+
+  render();
+}
+
+void GroupFillWaveEffect::setColor(
+  const CRGB& color
+)
+{
+  // This effect generates its own colors.
+}
+
+void GroupFillWaveEffect::setSpeed(
+  uint8_t speedPercent
+)
+{
+  speed = constrain(
+    speedPercent,
+    1,
+    100
+  );
+
+  updateInterval();
+}
+
+uint8_t GroupFillWaveEffect::getSpeed() const
+{
+  return speed;
+}
+
+void GroupFillWaveEffect::advanceStep()
+{
+  const uint16_t currentGroupSize =
+    getGroupLedCount(
+      activeGroup
+    );
+
+  if (phase == Phase::Fill)
+  {
+    if (
+      activePixel <
+      currentGroupSize - 1
+    )
+    {
+      activePixel++;
+      return;
+    }
+
+    if (activeGroup < 3)
+    {
+      activeGroup++;
+      activePixel = 0;
+      return;
+    }
+
+    phase = Phase::Empty;
+    activeGroup = 0;
+    activePixel = 1;
+    return;
+  }
+
+  if (
+    activePixel <
+    currentGroupSize - 1
+  )
+  {
+    activePixel++;
+    return;
+  }
+
+  if (activeGroup < 3)
+  {
+    activeGroup++;
+    activePixel = 0;
+    return;
+  }
+
+  phase = Phase::Fill;
+  activeGroup = 0;
+  activePixel = 1;
+
+  hue += 32;
+}
+
+void GroupFillWaveEffect::render()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const CRGB color =
+    CHSV(
+      hue,
+      255,
+      255
+    );
+
+  uint16_t visibleCounts[4] =
+  {
+    0,
+    0,
+    0,
+    0
+  };
+
+  for (
+    uint8_t groupIndex = 0;
+    groupIndex < 4;
+    groupIndex++
+  )
+  {
+    const uint16_t groupSize =
+      getGroupLedCount(
+        groupIndex
+      );
+
+    if (phase == Phase::Fill)
+    {
+      if (groupIndex < activeGroup)
+      {
+        visibleCounts[groupIndex] =
+          groupSize;
+      }
+      else if (groupIndex == activeGroup)
+      {
+        visibleCounts[groupIndex] =
+          activePixel;
+      }
+    }
+    else
+    {
+      if (groupIndex < activeGroup)
+      {
+        visibleCounts[groupIndex] = 0;
+      }
+      else if (groupIndex == activeGroup)
+      {
+        visibleCounts[groupIndex] =
+          groupSize - activePixel;
+      }
+      else
+      {
+        visibleCounts[groupIndex] =
+          groupSize;
+      }
+    }
+  }
+
+  renderGroup(
+    leds->getHddLeds(),
+    LED_COUNT_HDD,
+    visibleCounts[0],
+    color
+  );
+
+  renderGroup(
+    leds->getCpuLeds(),
+    LED_COUNT_CPU,
+    visibleCounts[1],
+    color
+  );
+
+  renderGroup(
+    leds->getIntakeLeds(),
+    LED_COUNT_INTAKE,
+    visibleCounts[2],
+    color
+  );
+
+  renderGroup(
+    leds->getExhaustLeds(),
+    LED_COUNT_EXHAUST,
+    visibleCounts[3],
+    color
+  );
+
+  leds->setEffectBrightness(255);
+  leds->show();
+}
+
+void GroupFillWaveEffect::renderGroup(
+  CRGB* groupLeds,
+  uint16_t ledCount,
+  uint16_t visibleCount,
+  const CRGB& color
+)
+{
+  if (groupLeds == nullptr)
+  {
+    return;
+  }
+
+  if (visibleCount > ledCount)
+  {
+    visibleCount = ledCount;
+  }
+
+  for (
+    uint16_t index = 0;
+    index < ledCount;
+    index++
+  )
+  {
+    if (index < visibleCount)
+    {
+      groupLeds[index] = color;
+    }
+    else
+    {
+      groupLeds[index] = CRGB::Black;
+    }
+  }
+}
+
+uint16_t GroupFillWaveEffect::
+getGroupLedCount(
+  uint8_t groupIndex
+) const
+{
+  switch (groupIndex)
+  {
+    case 0:
+      return LED_COUNT_HDD;
+
+    case 1:
+      return LED_COUNT_CPU;
+
+    case 2:
+      return LED_COUNT_INTAKE;
+
+    case 3:
+      return LED_COUNT_EXHAUST;
+
+    default:
+      return 0;
+  }
+}
+
+void GroupFillWaveEffect::updateInterval()
+{
+  updateIntervalMs =
+    map(
+      speed,
+      1,
+      100,
+      1200,
+      8
+    );
+}

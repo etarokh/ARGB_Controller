@@ -1,0 +1,96 @@
+#pragma once
+
+#include <Arduino.h>
+
+enum class SpeedProfile : uint8_t
+{
+  Slow,
+  Medium,
+  Fast
+};
+
+class SpeedCurve
+{
+public:
+
+  // New standardized API
+  static uint32_t interval(
+    uint8_t speedPercent,
+    SpeedProfile profile
+  )
+  {
+    switch (profile)
+    {
+      case SpeedProfile::Slow:
+        return interval(
+          speedPercent,
+          900,
+          80
+        );
+
+      case SpeedProfile::Medium:
+        return interval(
+          speedPercent,
+          500,
+          20
+        );
+
+      case SpeedProfile::Fast:
+        return interval(
+          speedPercent,
+          300,
+          6
+        );
+    }
+
+    return interval(
+      speedPercent,
+      500,
+      20
+    );
+  }
+
+  // Legacy API (keep for compatibility)
+  static uint32_t interval(
+    uint8_t speedPercent,
+    uint32_t slowestIntervalMs,
+    uint32_t fastestIntervalMs
+  )
+  {
+    speedPercent = constrain(
+      speedPercent,
+      1,
+      100
+    );
+
+    if (
+      slowestIntervalMs <
+      fastestIntervalMs
+    )
+    {
+      const uint32_t temp =
+        slowestIntervalMs;
+
+      slowestIntervalMs =
+        fastestIntervalMs;
+
+      fastestIntervalMs =
+        temp;
+    }
+
+    const float t =
+      (speedPercent - 1) /
+      99.0f;
+
+    // Gamma curve (~2.5)
+    const float curved =
+      t * t * sqrtf(t);
+
+    return
+      slowestIntervalMs -
+      (
+        slowestIntervalMs -
+        fastestIntervalMs
+      ) * curved;
+  }
+};

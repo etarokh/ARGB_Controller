@@ -1,0 +1,241 @@
+#include "ButtonManager.h"
+
+void ButtonManager::begin()
+{
+  pinMode(
+    PIN_BUTTON,
+    INPUT_PULLUP
+  );
+
+  lastReading =
+    digitalRead(PIN_BUTTON);
+
+  stableState =
+    lastReading;
+
+  pressedEvent = false;
+  doublePressedEvent = false;
+  longPressedEvent = false;
+
+  snooze24HoursEvent = false;
+  snooze30DaysEvent = false;
+  snooze6MonthsEvent = false;
+
+  threshold30DayEvent = false;
+  threshold6MonthEvent = false;
+
+  threshold30DayTriggered = false;
+  threshold6MonthTriggered = false;
+
+  singleClickPending = false;
+}
+
+void ButtonManager::update()
+{
+  const unsigned long now =
+    millis();
+
+  const bool currentReading =
+    digitalRead(PIN_BUTTON);
+
+  if (currentReading != lastReading)
+  {
+    lastDebounceTime =
+      now;
+  }
+
+  if (
+    now - lastDebounceTime >
+      BUTTON_DEBOUNCE_MS
+  )
+  {
+    if (currentReading != stableState)
+    {
+      stableState =
+        currentReading;
+
+      if (stableState == LOW)
+      {
+        pressStartTime =
+          now;
+
+        threshold30DayTriggered = false;
+        threshold6MonthTriggered = false;
+      }
+      else
+      {
+        const unsigned long heldFor =
+          now - pressStartTime;
+
+        /*
+          تمام رویدادهای Hold فقط اینجا،
+          یعنی پس از رهاشدن دکمه، ساخته می‌شوند.
+        */
+
+        if (heldFor >= SNOOZE_6M_MS)
+        {
+          singleClickPending = false;
+          snooze6MonthsEvent = true;
+        }
+        else if (heldFor >= SNOOZE_30D_MS)
+        {
+          singleClickPending = false;
+          snooze30DaysEvent = true;
+        }
+        else if (heldFor >= SNOOZE_24H_MS)
+        {
+          singleClickPending = false;
+          snooze24HoursEvent = true;
+        }
+        else if (heldFor >= LONG_PRESS_MS)
+        {
+          singleClickPending = false;
+          longPressedEvent = true;
+        }
+        else
+        {
+          if (
+            singleClickPending &&
+            now - firstClickReleasedAt <=
+              DOUBLE_CLICK_MS
+          )
+          {
+            singleClickPending = false;
+            doublePressedEvent = true;
+          }
+          else
+          {
+            singleClickPending = true;
+            firstClickReleasedAt = now;
+          }
+        }
+      }
+    }
+  }
+
+  if (stableState == LOW)
+  {
+    const unsigned long heldFor =
+      now - pressStartTime;
+
+    if (
+      heldFor >= SNOOZE_30D_MS &&
+      !threshold30DayTriggered
+    )
+    {
+      threshold30DayTriggered = true;
+      threshold30DayEvent = true;
+    }
+
+    if (
+      heldFor >= SNOOZE_6M_MS &&
+      !threshold6MonthTriggered
+    )
+    {
+      threshold6MonthTriggered = true;
+      threshold6MonthEvent = true;
+    }
+  }
+
+  if (
+    singleClickPending &&
+    stableState == HIGH &&
+    now - firstClickReleasedAt >
+      DOUBLE_CLICK_MS
+  )
+  {
+    singleClickPending = false;
+    pressedEvent = true;
+  }
+
+  lastReading =
+    currentReading;
+}
+
+bool ButtonManager::wasPressed()
+{
+  if (!pressedEvent)
+  {
+    return false;
+  }
+
+  pressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasDoublePressed()
+{
+  if (!doublePressedEvent)
+  {
+    return false;
+  }
+
+  doublePressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasLongPressed()
+{
+  if (!longPressedEvent)
+  {
+    return false;
+  }
+
+  longPressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasSnooze24HoursPressed()
+{
+  if (!snooze24HoursEvent)
+  {
+    return false;
+  }
+
+  snooze24HoursEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasSnooze30DaysPressed()
+{
+  if (!snooze30DaysEvent)
+  {
+    return false;
+  }
+
+  snooze30DaysEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasSnooze6MonthsPressed()
+{
+  if (!snooze6MonthsEvent)
+  {
+    return false;
+  }
+
+  snooze6MonthsEvent = false;
+  return true;
+}
+
+bool ButtonManager::was30DayThresholdReached()
+{
+  if (!threshold30DayEvent)
+  {
+    return false;
+  }
+
+  threshold30DayEvent = false;
+  return true;
+}
+
+bool ButtonManager::was6MonthThresholdReached()
+{
+  if (!threshold6MonthEvent)
+  {
+    return false;
+  }
+
+  threshold6MonthEvent = false;
+  return true;
+}

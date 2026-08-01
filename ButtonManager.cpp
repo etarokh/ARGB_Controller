@@ -1,0 +1,344 @@
+#include "ButtonManager.h"
+
+void ButtonManager::begin()
+{
+  pinMode(
+    PIN_BUTTON,
+    INPUT_PULLUP
+  );
+
+  lastReading =
+    digitalRead(PIN_BUTTON);
+
+  stableState =
+    lastReading;
+
+  pressedEvent = false;
+  doublePressedEvent = false;
+  triplePressedEvent = false;
+  quadruplePressedEvent = false;
+  longPressedEvent = false;
+
+  snooze24HoursEvent = false;
+  snooze30DaysEvent = false;
+  snooze6MonthsEvent = false;
+
+  threshold24HourEvent = false;
+  threshold30DayEvent = false;
+  threshold6MonthEvent = false;
+
+  threshold24HourTriggered = false;
+  threshold30DayTriggered = false;
+  threshold6MonthTriggered = false;
+
+  clickCount = 0;
+  suppressReleaseEvent = false;
+}
+
+void ButtonManager::update()
+{
+  const unsigned long now =
+    millis();
+
+  const bool currentReading =
+    digitalRead(PIN_BUTTON);
+
+  if (currentReading != lastReading)
+  {
+    lastDebounceTime =
+      now;
+  }
+
+  if (
+    now - lastDebounceTime >
+      BUTTON_DEBOUNCE_MS
+  )
+  {
+    if (currentReading != stableState)
+    {
+      stableState =
+        currentReading;
+
+      if (stableState == LOW)
+      {
+        pressStartTime =
+          now;
+
+        suppressReleaseEvent = false;
+
+        threshold24HourTriggered = false;
+        threshold30DayTriggered = false;
+        threshold6MonthTriggered = false;
+      }
+      else
+      {
+        const unsigned long heldFor =
+          now - pressStartTime;
+
+        if (suppressReleaseEvent)
+        {
+          suppressReleaseEvent = false;
+          clickCount = 0;
+        }
+        else if (heldFor >= SNOOZE_6M_MS)
+        {
+          clickCount = 0;
+          snooze6MonthsEvent = true;
+        }
+        else if (heldFor >= SNOOZE_30D_MS)
+        {
+          clickCount = 0;
+          snooze30DaysEvent = true;
+        }
+        else if (heldFor >= SNOOZE_24H_MS)
+        {
+          clickCount = 0;
+          snooze24HoursEvent = true;
+        }
+        else if (heldFor >= LONG_PRESS_MS)
+        {
+          clickCount = 0;
+          longPressedEvent = true;
+        }
+        else
+        {
+          if (clickCount < 4)
+          {
+            clickCount++;
+          }
+
+          lastClickReleasedAt = now;
+        }
+      }
+    }
+  }
+
+  if (stableState == LOW)
+  {
+    const unsigned long heldFor =
+      now - pressStartTime;
+
+    if (
+      heldFor >= SNOOZE_24H_MS &&
+      !threshold24HourTriggered
+    )
+    {
+      threshold24HourTriggered = true;
+      threshold24HourEvent = true;
+    }
+
+    if (
+      heldFor >= SNOOZE_30D_MS &&
+      !threshold30DayTriggered
+    )
+    {
+      threshold30DayTriggered = true;
+      threshold30DayEvent = true;
+    }
+
+    if (
+      heldFor >= SNOOZE_6M_MS &&
+      !threshold6MonthTriggered
+    )
+    {
+      threshold6MonthTriggered = true;
+      threshold6MonthEvent = true;
+    }
+  }
+
+  if (
+    clickCount > 0 &&
+    stableState == HIGH &&
+    now - lastClickReleasedAt >
+      DOUBLE_CLICK_MS
+  )
+  {
+    if (clickCount == 1)
+    {
+      pressedEvent = true;
+    }
+    else if (clickCount == 2)
+    {
+      doublePressedEvent = true;
+    }
+    else if (clickCount == 3)
+    {
+      triplePressedEvent = true;
+    }
+    else if (clickCount == 4)
+    {
+      quadruplePressedEvent = true;
+    }
+
+    clickCount = 0;
+  }
+
+  lastReading =
+    currentReading;
+}
+
+bool ButtonManager::wasPressed()
+{
+  if (!pressedEvent)
+  {
+    return false;
+  }
+
+  pressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasDoublePressed()
+{
+  if (!doublePressedEvent)
+  {
+    return false;
+  }
+
+  doublePressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasTriplePressed()
+{
+  if (!triplePressedEvent)
+  {
+    return false;
+  }
+
+  triplePressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasQuadruplePressed()
+{
+  if (!quadruplePressedEvent)
+  {
+    return false;
+  }
+
+  quadruplePressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasLongPressed()
+{
+  if (!longPressedEvent)
+  {
+    return false;
+  }
+
+  longPressedEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasSnooze24HoursPressed()
+{
+  if (!snooze24HoursEvent)
+  {
+    return false;
+  }
+
+  snooze24HoursEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasSnooze30DaysPressed()
+{
+  if (!snooze30DaysEvent)
+  {
+    return false;
+  }
+
+  snooze30DaysEvent = false;
+  return true;
+}
+
+bool ButtonManager::wasSnooze6MonthsPressed()
+{
+  if (!snooze6MonthsEvent)
+  {
+    return false;
+  }
+
+  snooze6MonthsEvent = false;
+  return true;
+}
+
+bool ButtonManager::was24HourThresholdReached()
+{
+  if (!threshold24HourEvent)
+  {
+    return false;
+  }
+
+  threshold24HourEvent = false;
+  return true;
+}
+
+bool ButtonManager::was30DayThresholdReached()
+{
+  if (!threshold30DayEvent)
+  {
+    return false;
+  }
+
+  threshold30DayEvent = false;
+  return true;
+}
+
+bool ButtonManager::was6MonthThresholdReached()
+{
+  if (!threshold6MonthEvent)
+  {
+    return false;
+  }
+
+  threshold6MonthEvent = false;
+  return true;
+}
+
+
+bool ButtonManager::
+isCurrentlyPressed() const
+{
+  return stableState == LOW;
+}
+
+unsigned long ButtonManager::
+getCurrentHoldDuration() const
+{
+  if (stableState != LOW)
+  {
+    return 0;
+  }
+
+  return millis() - pressStartTime;
+}
+
+uint8_t ButtonManager::
+getCurrentPressNumber() const
+{
+  if (stableState != LOW)
+  {
+    return 0;
+  }
+
+  uint8_t pressNumber =
+    clickCount + 1;
+
+  if (pressNumber > 4)
+  {
+    pressNumber = 4;
+  }
+
+  return pressNumber;
+}
+
+void ButtonManager::
+suppressCurrentPressRelease()
+{
+  suppressReleaseEvent = true;
+  clickCount = 0;
+}
+

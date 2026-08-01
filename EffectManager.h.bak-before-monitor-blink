@@ -1,0 +1,78 @@
+#pragma once
+
+#include <Arduino.h>
+#include <FastLED.h>
+
+#include "LedManager.h"
+
+enum class MonitorState : uint8_t {
+  Normal,
+  Warning,
+  Critical,
+  Offline
+};
+
+class EffectManager {
+public:
+  static constexpr uint8_t DISK_COUNT = 4;
+
+  void begin(LedManager* ledManager);
+  void update();
+
+  void setDefaultColor(const CRGB& color);
+
+  void setNetworkState(MonitorState state);
+  void setCpuState(MonitorState state);
+
+  void setDiskState(uint8_t diskIndex, MonitorState state);
+  MonitorState getDiskState(uint8_t diskIndex) const;
+  void setAllDisksState(MonitorState state);
+
+  void setEnabled(bool enabled);
+  bool isEnabled() const;
+
+  bool hasActiveAlert() const;
+
+private:
+  LedManager* leds = nullptr;
+
+  CRGB defaultColor = CRGB::Blue;
+
+  MonitorState networkState = MonitorState::Normal;
+  MonitorState cpuState = MonitorState::Normal;
+  MonitorState diskStates[DISK_COUNT];
+
+  bool enabled = true;
+  bool needsRender = true;
+
+  // صف هاردهای مشکل‌دار
+  uint8_t alertQueue[DISK_COUNT];
+  uint8_t alertCount = 0;
+  uint8_t queuePosition = 0;
+  bool queueNeedsRebuild = true;
+
+  // وضعیت چشمک HDD
+  int8_t activeDiskIndex = -1;
+  bool hddLedOn = true;
+  uint8_t completedBlinks = 0;
+  unsigned long lastBlinkChange = 0;
+
+  static constexpr unsigned long BLINK_ON_MS = 300;
+  static constexpr unsigned long BLINK_OFF_MS = 300;
+  static constexpr unsigned long BETWEEN_DISKS_MS = 1500;
+
+  CRGB colorForState(
+    MonitorState state,
+    const CRGB& normalColor
+  ) const;
+
+  uint8_t statePriority(MonitorState state) const;
+
+  void rebuildAlertQueue();
+  void startCurrentQueueDisk();
+  void moveToNextQueueDisk();
+  void resetBlinkSequence();
+  void updateHddBlink();
+
+  void render();
+};

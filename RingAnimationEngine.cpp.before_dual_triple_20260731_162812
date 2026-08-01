@@ -1,0 +1,220 @@
+#include "RingAnimationEngine.h"
+
+void RingAnimationEngine::begin()
+{
+  reset();
+}
+
+void RingAnimationEngine::reset()
+{
+  phase = 0;
+
+  progress = 0;
+
+  hue = 0;
+
+  filling = true;
+
+  lastUpdateTime = 0;
+}
+
+void RingAnimationEngine::setPattern(
+  RingAnimationPattern value
+)
+{
+  if (pattern == value)
+  {
+    return;
+  }
+
+  pattern = value;
+
+  reset();
+}
+
+void RingAnimationEngine::setUpdateInterval(
+  unsigned long intervalMs
+)
+{
+  updateIntervalMs = intervalMs;
+}
+
+bool RingAnimationEngine::update()
+{
+  const unsigned long currentTime =
+    millis();
+
+  if (
+    currentTime - lastUpdateTime <
+      updateIntervalMs
+  )
+  {
+    return false;
+  }
+
+  lastUpdateTime = currentTime;
+
+  switch (pattern)
+  {
+    case RingAnimationPattern::Spinner:
+      updateSpinner();
+      break;
+
+    case RingAnimationPattern::Fill:
+    case RingAnimationPattern::DualSpinner:
+    case RingAnimationPattern::TripleSpinner:
+    case RingAnimationPattern::KnightRider:
+    case RingAnimationPattern::Expand:
+    case RingAnimationPattern::Contract:
+    case RingAnimationPattern::HalfRing:
+    case RingAnimationPattern::Alternate:
+    case RingAnimationPattern::PulseRing:
+    default:
+      updateFill();
+      break;
+  }
+
+  return true;
+}
+
+void RingAnimationEngine::updateFill()
+{
+  if (filling)
+  {
+    if (progress < LEDS_PER_RING)
+    {
+      progress++;
+    }
+    else
+    {
+      filling = false;
+    }
+  }
+  else
+  {
+    if (progress > 0)
+    {
+      progress--;
+    }
+    else
+    {
+      filling = true;
+
+      hue += 17;
+    }
+  }
+}
+
+void RingAnimationEngine::updateSpinner()
+{
+  phase++;
+
+  if (phase >= LEDS_PER_RING)
+  {
+    phase = 0;
+
+    hue += 17;
+  }
+}
+
+void RingAnimationEngine::renderGroup(
+  CRGB* leds,
+  uint16_t ledCount
+) const
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  switch (pattern)
+  {
+    case RingAnimationPattern::Spinner:
+      renderSpinner(
+        leds,
+        ledCount
+      );
+      break;
+
+    case RingAnimationPattern::Fill:
+    case RingAnimationPattern::DualSpinner:
+    case RingAnimationPattern::TripleSpinner:
+    case RingAnimationPattern::KnightRider:
+    case RingAnimationPattern::Expand:
+    case RingAnimationPattern::Contract:
+    case RingAnimationPattern::HalfRing:
+    case RingAnimationPattern::Alternate:
+    case RingAnimationPattern::PulseRing:
+    default:
+      renderFill(
+        leds,
+        ledCount
+      );
+      break;
+  }
+}
+
+void RingAnimationEngine::renderFill(
+  CRGB* leds,
+  uint16_t ledCount
+) const
+{
+  const CRGB color =
+    getCurrentColor();
+
+  for (
+    uint16_t index = 0;
+    index < ledCount;
+    index++
+  )
+  {
+    const uint8_t ledPosition =
+      index % LEDS_PER_RING;
+
+    if (ledPosition < progress)
+    {
+      leds[index] = color;
+    }
+    else
+    {
+      leds[index] = CRGB::Black;
+    }
+  }
+}
+
+void RingAnimationEngine::renderSpinner(
+  CRGB* leds,
+  uint16_t ledCount
+) const
+{
+  const CRGB color =
+    getCurrentColor();
+
+  for (
+    uint16_t index = 0;
+    index < ledCount;
+    index++
+  )
+  {
+    const uint8_t ledPosition =
+      index % LEDS_PER_RING;
+
+    if (ledPosition == phase)
+    {
+      leds[index] = color;
+    }
+    else
+    {
+      leds[index] = CRGB::Black;
+    }
+  }
+}
+
+CRGB RingAnimationEngine::getCurrentColor() const
+{
+  return CHSV(
+    hue,
+    255,
+    255
+  );
+}

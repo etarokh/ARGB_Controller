@@ -1,0 +1,93 @@
+#include "BrightnessManager.h"
+
+#include "Config.h"
+#include "LedManager.h"
+
+void BrightnessManager::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+  brightness = DEFAULT_BRIGHTNESS;
+
+  apply();
+
+  Serial.print(
+    "Brightness: "
+  );
+
+  Serial.println(
+    brightness
+  );
+}
+
+void BrightnessManager::setBrightness(
+  uint8_t newBrightness
+)
+{
+  brightness = constrain(
+    newBrightness,
+    MIN_BRIGHTNESS,
+    MAX_BRIGHTNESS
+  );
+
+  apply();
+}
+
+uint8_t BrightnessManager::
+getBrightness() const
+{
+  return brightness;
+}
+
+void BrightnessManager::increase()
+{
+  if (
+    brightness >=
+    MAX_BRIGHTNESS - BRIGHTNESS_STEP
+  )
+  {
+    setBrightness(
+      MAX_BRIGHTNESS
+    );
+
+    return;
+  }
+
+  setBrightness(
+    brightness + BRIGHTNESS_STEP
+  );
+}
+
+void BrightnessManager::decrease()
+{
+  if (
+    brightness <=
+    MIN_BRIGHTNESS + BRIGHTNESS_STEP
+  )
+  {
+    setBrightness(
+      MIN_BRIGHTNESS
+    );
+
+    return;
+  }
+
+  setBrightness(
+    brightness - BRIGHTNESS_STEP
+  );
+}
+
+void BrightnessManager::apply()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  leds->setBrightness(
+    brightness
+  );
+
+  leds->show();
+}

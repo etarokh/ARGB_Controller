@@ -1,0 +1,101 @@
+#pragma once
+
+#include <Arduino.h>
+#include <FastLED.h>
+
+#include "DecorativeEffect.h"
+#include "LedManager.h"
+
+class AnimatedHueEffect :
+  public DecorativeEffect
+{
+public:
+  void begin(
+    LedManager* ledManager
+  ) override;
+
+  void update() override;
+
+  void reset() override;
+
+  void setColor(
+    const CRGB& color
+  ) override;
+
+  void setSpeed(
+    uint8_t speedPercent
+  );
+
+  uint8_t getSpeed() const;
+
+protected:
+  static constexpr uint8_t GROUP_COUNT = 4;
+
+  LedManager* leds = nullptr;
+
+  uint8_t baseHue = 0;
+
+  virtual void renderFrame() = 0;
+
+  virtual SpeedProfile
+  getSpeedProfile() const = 0;
+
+  virtual uint8_t
+  getHueStep() const
+  {
+    return 1;
+  }
+
+  virtual bool shouldAdvanceHue() const
+  {
+    return true;
+  }
+
+  virtual void onReset()
+  {
+  }
+
+  virtual void beforeFrame()
+  {
+  }
+
+  virtual void afterFrame()
+  {
+  }
+
+  CRGB hsvColor(
+    uint8_t hueOffset = 0,
+    uint8_t saturation = 255,
+    uint8_t value = 255
+  ) const;
+
+  CRGB* getGroupLeds(
+    uint8_t groupIndex
+  ) const;
+
+  uint16_t getGroupLedCount(
+    uint8_t groupIndex
+  ) const;
+
+  void fillGroup(
+    uint8_t groupIndex,
+    const CRGB& color
+  );
+
+  void setGroupPixel(
+    uint8_t groupIndex,
+    uint16_t pixelIndex,
+    const CRGB& color
+  );
+
+  void clearAllGroups();
+
+private:
+  uint8_t speed = 50;
+
+  unsigned long lastUpdateTime = 0;
+
+  uint32_t updateIntervalMs = 25;
+
+  void updateInterval();
+};

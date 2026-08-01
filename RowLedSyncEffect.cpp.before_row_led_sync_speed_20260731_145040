@@ -1,0 +1,182 @@
+#include "RowLedSyncEffect.h"
+#include "SpeedCurve.h"
+#include "Config.h"
+
+void RowLedSyncEffect::begin(
+  LedManager* ledManager
+)
+{
+  leds = ledManager;
+
+  setSpeed(50);
+
+  reset();
+}
+
+void RowLedSyncEffect::update()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const unsigned long currentTime =
+    millis();
+
+  if (
+    currentTime - lastUpdateTime <
+      updateIntervalMs
+  )
+  {
+    return;
+  }
+
+  lastUpdateTime = currentTime;
+
+  if (filling)
+  {
+    if (filledLedCount < LEDS_PER_FAN)
+    {
+      filledLedCount++;
+    }
+    else
+    {
+      filling = false;
+    }
+  }
+  else
+  {
+    if (filledLedCount > 0)
+    {
+      filledLedCount--;
+    }
+    else
+    {
+      filling = true;
+
+      hue += 17;
+    }
+  }
+
+  render();
+}
+
+void RowLedSyncEffect::reset()
+{
+  filledLedCount = 0;
+
+  filling = true;
+
+  hue = 0;
+
+  lastUpdateTime = 0;
+
+  render();
+}
+
+void RowLedSyncEffect::setColor(
+  const CRGB& color
+)
+{
+  // This effect generates its own colors.
+}
+
+void RowLedSyncEffect::setSpeed(
+  uint8_t speedPercent
+)
+{
+  speed = constrain(
+    speedPercent,
+    1,
+    100
+  );
+
+  updateInterval();
+}
+
+uint8_t RowLedSyncEffect::getSpeed() const
+{
+  return speed;
+}
+
+void RowLedSyncEffect::render()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  const CRGB color =
+    CHSV(
+      hue,
+      255,
+      255
+    );
+
+  renderGroup(
+    leds->getHddLeds(),
+    LED_COUNT_HDD,
+    color
+  );
+
+  renderGroup(
+    leds->getIntakeLeds(),
+    LED_COUNT_INTAKE,
+    color
+  );
+
+  renderGroup(
+    leds->getExhaustLeds(),
+    LED_COUNT_EXHAUST,
+    color
+  );
+
+  renderGroup(
+    leds->getCpuLeds(),
+    LED_COUNT_CPU,
+    color
+  );
+
+  leds->setEffectBrightness(255);
+  leds->show();
+}
+
+void RowLedSyncEffect::renderGroup(
+  CRGB* groupLeds,
+  uint16_t ledCount,
+  const CRGB& color
+)
+{
+  if (groupLeds == nullptr)
+  {
+    return;
+  }
+
+  for (
+    uint16_t index = 0;
+    index < ledCount;
+    index++
+  )
+  {
+    const uint8_t ledPosition =
+      index % LEDS_PER_FAN;
+
+    if (ledPosition < filledLedCount)
+    {
+      groupLeds[index] = color;
+    }
+    else
+    {
+      groupLeds[index] = CRGB::Black;
+    }
+  }
+}
+
+void RowLedSyncEffect::updateInterval()
+{
+  updateIntervalMs =
+    SpeedCurve::interval(
+      speed,
+      SpeedProfile::Sequential
+    );
+}

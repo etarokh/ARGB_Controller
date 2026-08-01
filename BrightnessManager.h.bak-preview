@@ -1,0 +1,33 @@
+#pragma once
+
+#include <Arduino.h>
+
+class LedManager;
+
+class BrightnessManager
+{
+public:
+  void begin(
+    LedManager* ledManager
+  );
+
+  void setBrightness(
+    uint8_t newBrightness
+  );
+
+  uint8_t getBrightness() const;
+
+  void increase();
+  void decrease();
+
+private:
+  static constexpr uint8_t MIN_BRIGHTNESS = 10;
+  static constexpr uint8_t MAX_BRIGHTNESS = 255;
+  static constexpr uint8_t BRIGHTNESS_STEP = 5;
+
+  LedManager* leds = nullptr;
+
+  uint8_t brightness = 100;
+
+  void apply();
+};

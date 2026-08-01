@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+
+import json
+import time
+import urllib.parse
+import urllib.request
+
+import serial
+
+
+PROMETHEUS_URL = "http://localhost:9090"
+SERIAL_PORT = "/dev/ttyUSB0"
+SERIAL_BAUD = 115200
+NETWORK_INTERFACE = "br1"
+
+
+def prometheus_query(query):
+    params = urllib.parse.urlencode({"query": query})
+    url = f"{PROMETHEUS_URL}/api/v1/query?{params}"
+
+    with urllib.request.urlopen(url, timeout=5) as response:
+        payload = json.load(response)
+
+    if payload.get("status") != "success":
+        raise RuntimeError("Prometheus query failed")
+
+    return payload["data"]["result"]
+
+
+def cpu_state():
+    results = prometheus_query(
+        "truenas_cpu_temperature_celsius"
+    )
+
+    if not results:
+        return "O", None
+
+    temperatures = [
+        float(item["value"][1])
+        for item in results
+    ]
+
+    maximum = max(temperatures)
+
+    if maximum >= 85:
+        return "C", maximum
+
+    if maximum >= 70:
+        return "W", maximum
+
+    return "N", maximum
+
+
+def network_state():
+    query = (
+        'truenas_network_link_status'
+        f'{{interface="{NETWORK_INTERFACE}"}}'
+    )
+
+    results = prometheus_query(query)
+
+    if not results:
+        return "O", None
+
+    link_status = float(results[0]["value"][1])
+
+    if link_status == 1:
+        return "N", link_status
+
+    return "O", link_status
+
+
+def disk_states():
+    query = (
+        'truenas_disk_health_score'
+        '{bay=~"BAY1|BAY2|BAY3|BAY4"}'
+    )
+
+    results = prometheus_query(query)
+
+    scores = {
+        item["metric"]["bay"]: float(item["value"][1])
+        for item in results
+    }
+
+    states = {}
+
+    for bay in ("BAY1", "BAY2", "BAY3", "BAY4"):
+        score = scores.get(bay)
+
+        if score is None:
+            states[bay] = "O"
+        elif score < 80:
+            states[bay] = "C"
+        elif score < 100:
+            states[bay] = "W"
+        else:
+            states[bay] = "N"
+
+    return states, scores
+
+
+def build_command():
+    cpu, cpu_temp = cpu_state()
+    network, network_value = network_state()
+    disks, disk_scores = disk_states()
+
+    command = (
+        f"CPU={cpu};"
+        f"NET={network};"
+        f"B1={disks['BAY1']};"
+        f"B2={disks['BAY2']};"
+        f"B3={disks['BAY3']};"
+        f"B4={disks['BAY4']}"
+    )
+
+    debug = {
+        "cpu_max_celsius": cpu_temp,
+        "network_interface": NETWORK_INTERFACE,
+        "network_link": network_value,
+        "disk_scores": disk_scores,
+        "command": command,
+    }
+
+    return command, debug
+
+
+def send_command(command):
+    with serial.Serial(
+        SERIAL_PORT,
+        SERIAL_BAUD,
+        timeout=3,
+    ) as port:
+        time.sleep(2)
+        port.reset_input_buffer()
+
+        port.write((command + "\n").encode("ascii"))
+        port.flush()
+
+        response = port.readline().decode(
+            "ascii",
+            errors="replace",
+        ).strip()
+
+    return response
+
+
+def main():
+    command, debug = build_command()
+
+    print(json.dumps(debug, indent=2))
+    print(f"Sending: {command}")
+
+    response = send_command(command)
+    print(f"ESP32 response: {response}")
+
+    if response != "ACK":
+        raise RuntimeError(
+            f"Unexpected ESP32 response: {response!r}"
+        )
+
+
+if __name__ == "__main__":
+    main()

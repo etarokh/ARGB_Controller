@@ -1,0 +1,48 @@
+#pragma once
+
+#include <Arduino.h>
+#include <FastLED.h>
+
+class RingAnimationEngine
+{
+public:
+  static constexpr uint8_t LEDS_PER_RING = 8;
+
+  void begin();
+
+  void reset();
+
+  void setPattern(
+    uint8_t value
+  );
+
+  void setUpdateInterval(
+    unsigned long intervalMs
+  );
+
+  bool update();
+
+  void renderGroup(
+    CRGB* leds,
+    uint16_t ledCount
+  ) const;
+
+private:
+  uint8_t pattern = 0;
+
+  uint8_t progress = 0;
+
+  uint8_t hue = 0;
+
+  bool filling = true;
+
+  unsigned long lastUpdateTime = 0;
+
+  unsigned long updateIntervalMs = 120;
+
+  CRGB getCurrentColor() const;
+
+  uint8_t getFillOrder(
+    uint8_t ledPosition
+  ) const;
+};

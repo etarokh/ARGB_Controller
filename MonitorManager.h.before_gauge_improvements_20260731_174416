@@ -1,0 +1,115 @@
+#pragma once
+
+#include <Arduino.h>
+#include <FastLED.h>
+#include <Preferences.h>
+
+#include "GaugeRenderer.h"
+
+class LedManager;
+
+enum class MonitorPage : uint8_t
+{
+  SystemOverview = 0,
+  Network,
+  Services
+};
+
+class MonitorManager
+{
+public:
+  static constexpr uint8_t THEME_COUNT = 3;
+
+  void begin(
+    LedManager* ledManager
+  );
+
+  void update();
+
+  void setEnabled(
+    bool enabled
+  );
+
+  bool isEnabled() const;
+
+  void resetToFirstPage();
+
+  void nextMonitorPage();
+
+  MonitorPage getMonitorPage() const;
+
+  const char* getMonitorPageName() const;
+
+  void setCpuUsagePercent(
+    uint8_t percent
+  );
+
+  uint8_t getCpuUsagePercent() const;
+
+  void setStorageUsedPercent(
+    uint8_t percent
+  );
+
+  uint8_t getStorageUsedPercent() const;
+
+  void setStorageCapacity(
+    float freeTb,
+    float totalTb
+  );
+
+  float getStorageFreeTb() const;
+
+  float getStorageTotalTb() const;
+
+  void setTheme(
+    uint8_t theme
+  );
+
+  void nextTheme();
+
+  uint8_t getTheme() const;
+
+  const char* getThemeName() const;
+
+private:
+  LedManager* leds = nullptr;
+
+  GaugeRenderer gaugeRenderer;
+
+  Preferences preferences;
+
+  bool preferencesReady = false;
+
+  bool enabled = false;
+
+  bool needsRender = true;
+
+  MonitorPage currentPage =
+    MonitorPage::SystemOverview;
+
+  uint8_t cpuUsagePercent = 50;
+
+  uint8_t storageUsedPercent = 25;
+
+  float storageFreeTb = 6.0f;
+
+  float storageTotalTb = 8.0f;
+
+  uint8_t themeIndex = 0;
+
+  void render();
+
+  void renderSystemOverview();
+
+  void renderPlaceholder(
+    const CRGB& color
+  );
+
+  CRGB getBackgroundColor() const;
+
+  CRGB getStorageColor() const;
+
+  CRGB getCpuColor() const;
+
+  CRGB getInactiveGroupColor() const;
+};

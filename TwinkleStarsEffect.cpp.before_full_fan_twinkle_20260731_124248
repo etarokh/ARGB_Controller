@@ -1,0 +1,260 @@
+#include "TwinkleStarsEffect.h"
+
+void TwinkleStarsEffect::nextPattern()
+{
+  patternIndex++;
+
+  if (patternIndex >= PATTERN_COUNT)
+  {
+    patternIndex = 0;
+  }
+
+  clearAllGroups();
+
+  Serial.print(
+    "Twinkle Stars pattern: "
+  );
+
+  Serial.println(
+    getPatternName()
+  );
+}
+
+uint8_t TwinkleStarsEffect::
+getPattern() const
+{
+  return patternIndex;
+}
+
+const char*
+TwinkleStarsEffect::getPatternName() const
+{
+  switch (patternIndex)
+  {
+    case 0:
+      return "Gentle Stars";
+
+    case 1:
+      return "Dense Stars";
+
+    case 2:
+      return "Color Sparkle";
+
+    case 3:
+      return "Slow Dream";
+
+    default:
+      return "Unknown";
+  }
+}
+
+void TwinkleStarsEffect::onReset()
+{
+  clearAllGroups();
+}
+
+void TwinkleStarsEffect::renderFrame()
+{
+  if (leds == nullptr)
+  {
+    return;
+  }
+
+  fadeAllStars();
+
+  createRandomStars();
+}
+
+uint8_t TwinkleStarsEffect::
+getFadeAmount() const
+{
+  switch (patternIndex)
+  {
+    case 0:
+      return 28;
+
+    case 1:
+      return 20;
+
+    case 2:
+      return 44;
+
+    case 3:
+      return 10;
+
+    default:
+      return 28;
+  }
+}
+
+uint8_t TwinkleStarsEffect::
+getSpawnChance() const
+{
+  switch (patternIndex)
+  {
+    case 0:
+      return 70;
+
+    case 1:
+      return 155;
+
+    case 2:
+      return 115;
+
+    case 3:
+      return 42;
+
+    default:
+      return 70;
+  }
+}
+
+uint8_t TwinkleStarsEffect::
+getStarsPerFrame() const
+{
+  switch (patternIndex)
+  {
+    case 0:
+      return 1;
+
+    case 1:
+      return 3;
+
+    case 2:
+      return 2;
+
+    case 3:
+      return 1;
+
+    default:
+      return 1;
+  }
+}
+
+uint8_t TwinkleStarsEffect::
+getMinimumBrightness() const
+{
+  switch (patternIndex)
+  {
+    case 0:
+      return 150;
+
+    case 1:
+      return 120;
+
+    case 2:
+      return 190;
+
+    case 3:
+      return 100;
+
+    default:
+      return 150;
+  }
+}
+
+void TwinkleStarsEffect::fadeAllStars()
+{
+  const uint8_t fadeAmount =
+    getFadeAmount();
+
+  for (
+    uint8_t groupIndex = 0;
+    groupIndex < GROUP_COUNT;
+    groupIndex++
+  )
+  {
+    CRGB* groupLeds =
+      getGroupLeds(
+        groupIndex
+      );
+
+    const uint16_t ledCount =
+      getGroupLedCount(
+        groupIndex
+      );
+
+    if (groupLeds == nullptr)
+    {
+      continue;
+    }
+
+    fadeToBlackBy(
+      groupLeds,
+      ledCount,
+      fadeAmount
+    );
+  }
+}
+
+void TwinkleStarsEffect::createRandomStars()
+{
+  if (
+    random8() >=
+      getSpawnChance()
+  )
+  {
+    return;
+  }
+
+  const uint8_t starsToCreate =
+    getStarsPerFrame();
+
+  for (
+    uint8_t starIndex = 0;
+    starIndex < starsToCreate;
+    starIndex++
+  )
+  {
+    const uint8_t groupIndex =
+      random8(
+        GROUP_COUNT
+      );
+
+    const uint16_t ledCount =
+      getGroupLedCount(
+        groupIndex
+      );
+
+    if (ledCount == 0)
+    {
+      continue;
+    }
+
+    const uint16_t pixelIndex =
+      random16(
+        ledCount
+      );
+
+    uint8_t hueOffset;
+
+    if (patternIndex == 2)
+    {
+      hueOffset =
+        random8();
+    }
+    else
+    {
+      hueOffset =
+        static_cast<uint8_t>(
+          random8(96)
+        );
+    }
+
+    const uint8_t brightness =
+      random8(
+        getMinimumBrightness(),
+        255
+      );
+
+    setGroupPixel(
+      groupIndex,
+      pixelIndex,
+      hsvColor(
+        hueOffset,
+        220,
+        brightness
+      )
+    );
+  }
+}

@@ -1,0 +1,42 @@
+#pragma once
+
+#include <Arduino.h>
+#include "Config.h"
+
+class ButtonManager
+{
+public:
+  void begin();
+  void update();
+
+  bool wasPressed();
+  bool wasDoublePressed();
+  bool wasLongPressed();
+  bool wasVeryLongPressed();
+
+private:
+  bool lastReading = HIGH;
+  bool stableState = HIGH;
+
+  bool pressedEvent = false;
+  bool doublePressedEvent = false;
+  bool longPressedEvent = false;
+  bool veryLongPressedEvent = false;
+
+  bool veryLongPressTriggered = false;
+
+  bool singleClickPending = false;
+
+  unsigned long lastDebounceTime = 0;
+  unsigned long pressStartTime = 0;
+  unsigned long firstClickReleasedAt = 0;
+
+  static constexpr unsigned long DOUBLE_CLICK_MS =
+    600UL;
+
+  static constexpr unsigned long LONG_PRESS_MS =
+    1000UL;
+
+  static constexpr unsigned long VERY_LONG_PRESS_MS =
+    4000UL;
+};
