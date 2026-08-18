@@ -257,6 +257,167 @@ getStaticColorIndex() const
   return staticColorEffect.getColorIndex();
 }
 
+bool DecorativeEffectManager::hasPattern() const
+{
+  return getPatternCount() > 0;
+}
+
+uint8_t DecorativeEffectManager::getPattern() const
+{
+  switch (currentEffectType)
+  {
+    case DecorativeEffectType::SpectrumWave:
+      return spectrumWaveEffect.getPattern();
+
+    case DecorativeEffectType::TwinkleStars:
+      return twinkleStarsEffect.getPattern();
+
+    case DecorativeEffectType::GradientFlow:
+      return gradientFlowEffect.getPattern();
+
+    case DecorativeEffectType::LavaLamp:
+      return lavaLampEffect.getPattern();
+
+    case DecorativeEffectType::Plasma:
+      return plasmaEffect.getPattern();
+
+    case DecorativeEffectType::Fire:
+      return fireEffect.getPattern();
+
+    case DecorativeEffectType::Nebula:
+      return nebulaEffect.getPattern();
+
+    case DecorativeEffectType::RowLedSync:
+      return rowLedSyncEffect.getPattern();
+
+    case DecorativeEffectType::GroupFillWave:
+      return groupFillWaveEffect.getPattern();
+
+    case DecorativeEffectType::AlternatingStatic:
+      return alternatingStaticEffect.getPattern();
+
+    default:
+      return 0;
+  }
+}
+
+uint8_t DecorativeEffectManager::getPatternCount() const
+{
+  switch (currentEffectType)
+  {
+    case DecorativeEffectType::SpectrumWave:
+    case DecorativeEffectType::TwinkleStars:
+    case DecorativeEffectType::GradientFlow:
+    case DecorativeEffectType::LavaLamp:
+    case DecorativeEffectType::Plasma:
+    case DecorativeEffectType::Fire:
+    case DecorativeEffectType::Nebula:
+    case DecorativeEffectType::GroupFillWave:
+      return 4;
+
+    case DecorativeEffectType::RowLedSync:
+      return 10;
+
+    case DecorativeEffectType::AlternatingStatic:
+      return 12;
+
+    default:
+      return 0;
+  }
+}
+
+void DecorativeEffectManager::setPattern(
+  uint8_t pattern
+)
+{
+  const uint8_t patternCount =
+    getPatternCount();
+
+  if (patternCount == 0)
+  {
+    return;
+  }
+
+  if (pattern >= patternCount)
+  {
+    pattern = 0;
+  }
+
+  if (
+    currentEffectType ==
+      DecorativeEffectType::RowLedSync
+  )
+  {
+    rowLedSyncEffect.setPattern(
+      pattern
+    );
+
+    settingsStorage().
+      setDecorativePattern(
+        static_cast<uint8_t>(
+          DecorativeEffectType::RowLedSync
+        ),
+        rowLedSyncEffect.getPattern()
+      );
+
+    return;
+  }
+
+  for (
+    uint8_t step = 0;
+    step < patternCount;
+    step++
+  )
+  {
+    if (getPattern() == pattern)
+    {
+      return;
+    }
+
+    switch (currentEffectType)
+    {
+      case DecorativeEffectType::SpectrumWave:
+        spectrumWaveEffect.nextPattern();
+        break;
+
+      case DecorativeEffectType::TwinkleStars:
+        twinkleStarsEffect.nextPattern();
+        break;
+
+      case DecorativeEffectType::GradientFlow:
+        gradientFlowEffect.nextPattern();
+        break;
+
+      case DecorativeEffectType::LavaLamp:
+        lavaLampEffect.nextPattern();
+        break;
+
+      case DecorativeEffectType::Plasma:
+        plasmaEffect.nextPattern();
+        break;
+
+      case DecorativeEffectType::Fire:
+        fireEffect.nextPattern();
+        break;
+
+      case DecorativeEffectType::Nebula:
+        nebulaEffect.nextPattern();
+        break;
+
+      case DecorativeEffectType::GroupFillWave:
+        groupFillWaveEffect.nextPattern();
+        break;
+
+      case DecorativeEffectType::AlternatingStatic:
+        alternatingStaticEffect.nextPattern();
+        break;
+
+      default:
+        return;
+    }
+  }
+}
+
 void DecorativeEffectManager::nextPattern()
 {
   if (

@@ -78,6 +78,16 @@ public:
   uint8_t
   getStaticColorIndex() const;
 
+  bool hasPattern() const;
+
+  uint8_t getPattern() const;
+
+  uint8_t getPatternCount() const;
+
+  void setPattern(
+    uint8_t pattern
+  );
+
   void nextPattern();
 
   const char* getPatternName() const;
