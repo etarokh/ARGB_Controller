@@ -1052,6 +1052,60 @@ bool CommandParser::processCommand(
     return true;
   }
 
+  if (
+    strncmp(
+      line,
+      "SET_BASE_GAUGE_COLOR ",
+      21
+    ) == 0
+  )
+  {
+    if (monitor == nullptr)
+    {
+      printCommandError(
+        "MONITOR_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 21;
+    char* endPointer = nullptr;
+
+    const long colorIndex =
+      strtol(
+        value,
+        &endPointer,
+        10
+      );
+
+    if (
+      endPointer == value ||
+      *endPointer != '\0' ||
+      colorIndex < 0 ||
+      colorIndex >=
+        MonitorManager::THEME_COUNT
+    )
+    {
+      printCommandError(
+        "INVALID_BASE_GAUGE_COLOR"
+      );
+
+      return true;
+    }
+
+    monitor->
+      setBaseGaugeColorIndex(
+        static_cast<uint8_t>(
+          colorIndex
+        )
+      );
+
+    printOk();
+
+    return true;
+  }
+
   if (strchr(line, '=') == nullptr)
   {
     printCommandError(
