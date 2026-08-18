@@ -644,11 +644,33 @@ bool CommandParser::processCommand(
     );
 
     Serial.print(";STORAGECOLOR=");
-    Serial.println(
+    Serial.print(
       monitor == nullptr
         ? 0
         : monitor->
             getStorageGaugeColorIndex()
+    );
+
+    Serial.print(";PATTERN=");
+    Serial.print(
+      decorative == nullptr
+        ? 0
+        : decorative->getPattern()
+    );
+
+    Serial.print(";PATTERNCOUNT=");
+    Serial.print(
+      decorative == nullptr
+        ? 0
+        : decorative->getPatternCount()
+    );
+
+    Serial.print(";HASPATTERN=");
+    Serial.println(
+      decorative != nullptr &&
+      decorative->hasPattern()
+        ? 1
+        : 0
     );
 
     return true;
@@ -767,6 +789,60 @@ bool CommandParser::processCommand(
     decorative->setEffect(
       static_cast<DecorativeEffectType>(
         effectIndex
+      )
+    );
+
+    printOk();
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_PATTERN ",
+      12
+    ) == 0
+  )
+  {
+    if (decorative == nullptr)
+    {
+      printCommandError(
+        "DECORATIVE_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 12;
+    char* endPointer = nullptr;
+
+    const long patternIndex =
+      strtol(
+        value,
+        &endPointer,
+        10
+      );
+
+    if (
+      endPointer == value ||
+      *endPointer != '\0' ||
+      patternIndex < 0 ||
+      !decorative->hasPattern() ||
+      patternIndex >=
+        decorative->getPatternCount()
+    )
+    {
+      printCommandError(
+        "INVALID_PATTERN"
+      );
+
+      return true;
+    }
+
+    decorative->setPattern(
+      static_cast<uint8_t>(
+        patternIndex
       )
     );
 
