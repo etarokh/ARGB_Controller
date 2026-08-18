@@ -1025,7 +1025,7 @@ void MonitorManager::renderPlaceholder(
 CRGB MonitorManager::
 getBackgroundColor() const
 {
-  switch (themeIndex)
+  switch (baseGaugeColorIndex)
   {
     case 0:
       /*
