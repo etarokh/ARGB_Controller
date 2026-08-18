@@ -75,6 +75,18 @@ public:
 
   const char* getThemeName() const;
 
+  void setStorageGaugeColorIndex(
+    uint8_t colorIndex
+  );
+
+  uint8_t getStorageGaugeColorIndex() const;
+
+  void setCpuGaugeColorIndex(
+    uint8_t colorIndex
+  );
+
+  uint8_t getCpuGaugeColorIndex() const;
+
 private:
   LedManager* leds = nullptr;
 
@@ -129,6 +141,10 @@ private:
   float storageTotalTb = 8.0f;
 
   uint8_t themeIndex = 0;
+
+  uint8_t storageGaugeColorIndex = 0;
+
+  uint8_t cpuGaugeColorIndex = 0;
 
   void render();
 

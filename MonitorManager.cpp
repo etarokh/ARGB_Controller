@@ -62,6 +62,46 @@ void MonitorManager::begin(
       );
     }
 
+    storageGaugeColorIndex =
+      preferences.getUChar(
+        "storageColor",
+        themeIndex
+      );
+
+    if (
+      storageGaugeColorIndex >=
+        THEME_COUNT
+    )
+    {
+      storageGaugeColorIndex =
+        themeIndex;
+
+      preferences.putUChar(
+        "storageColor",
+        storageGaugeColorIndex
+      );
+    }
+
+    cpuGaugeColorIndex =
+      preferences.getUChar(
+        "cpuColor",
+        themeIndex
+      );
+
+    if (
+      cpuGaugeColorIndex >=
+        THEME_COUNT
+    )
+    {
+      cpuGaugeColorIndex =
+        themeIndex;
+
+      preferences.putUChar(
+        "cpuColor",
+        cpuGaugeColorIndex
+      );
+    }
+
     Serial.print(
       "MONITOR THEME RESTORED: "
     );
@@ -73,6 +113,10 @@ void MonitorManager::begin(
   else
   {
     themeIndex = 0;
+
+    storageGaugeColorIndex = 0;
+
+    cpuGaugeColorIndex = 0;
 
     Serial.println(
       "MONITOR THEME: NVS unavailable"
@@ -452,11 +496,27 @@ void MonitorManager::setTheme(
 
   themeIndex = theme;
 
+  storageGaugeColorIndex =
+    themeIndex;
+
+  cpuGaugeColorIndex =
+    themeIndex;
+
   if (preferencesReady)
   {
     preferences.putUChar(
       "theme",
       themeIndex
+    );
+
+    preferences.putUChar(
+      "storageColor",
+      storageGaugeColorIndex
+    );
+
+    preferences.putUChar(
+      "cpuColor",
+      cpuGaugeColorIndex
     );
   }
 
@@ -472,11 +532,27 @@ void MonitorManager::nextTheme()
     themeIndex = 0;
   }
 
+  storageGaugeColorIndex =
+    themeIndex;
+
+  cpuGaugeColorIndex =
+    themeIndex;
+
   if (preferencesReady)
   {
     preferences.putUChar(
       "theme",
       themeIndex
+    );
+
+    preferences.putUChar(
+      "storageColor",
+      storageGaugeColorIndex
+    );
+
+    preferences.putUChar(
+      "cpuColor",
+      cpuGaugeColorIndex
     );
   }
 
@@ -494,6 +570,82 @@ void MonitorManager::nextTheme()
 uint8_t MonitorManager::getTheme() const
 {
   return themeIndex;
+}
+
+void MonitorManager::
+setStorageGaugeColorIndex(
+  uint8_t colorIndex
+)
+{
+  if (colorIndex >= THEME_COUNT)
+  {
+    return;
+  }
+
+  if (
+    storageGaugeColorIndex ==
+      colorIndex
+  )
+  {
+    return;
+  }
+
+  storageGaugeColorIndex =
+    colorIndex;
+
+  if (preferencesReady)
+  {
+    preferences.putUChar(
+      "storageColor",
+      storageGaugeColorIndex
+    );
+  }
+
+  needsRender = true;
+}
+
+uint8_t MonitorManager::
+getStorageGaugeColorIndex() const
+{
+  return storageGaugeColorIndex;
+}
+
+void MonitorManager::
+setCpuGaugeColorIndex(
+  uint8_t colorIndex
+)
+{
+  if (colorIndex >= THEME_COUNT)
+  {
+    return;
+  }
+
+  if (
+    cpuGaugeColorIndex ==
+      colorIndex
+  )
+  {
+    return;
+  }
+
+  cpuGaugeColorIndex =
+    colorIndex;
+
+  if (preferencesReady)
+  {
+    preferences.putUChar(
+      "cpuColor",
+      cpuGaugeColorIndex
+    );
+  }
+
+  needsRender = true;
+}
+
+uint8_t MonitorManager::
+getCpuGaugeColorIndex() const
+{
+  return cpuGaugeColorIndex;
 }
 
 const char*
@@ -853,7 +1005,7 @@ getBackgroundColor() const
 CRGB MonitorManager::
 getStorageColor() const
 {
-  switch (themeIndex)
+  switch (storageGaugeColorIndex)
   {
     case 0:
       return CRGB::Red;
@@ -881,7 +1033,7 @@ getStorageColor() const
 CRGB MonitorManager::
 getCpuColor() const
 {
-  switch (themeIndex)
+  switch (cpuGaugeColorIndex)
   {
     case 0:
       return CRGB::Blue;

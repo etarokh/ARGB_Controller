@@ -118,7 +118,9 @@ void setup()
   commandParser.begin(
     &effects,
     &modeManager,
-    &monitorManager
+    &monitorManager,
+    &decorativeEffects,
+    &brightnessManager
   );
 
   decorativeEffects.begin(

@@ -1,4 +1,5 @@
 #include "CommandParser.h"
+#include "SettingsStorage.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -6,12 +7,16 @@
 void CommandParser::begin(
   EffectManager* effectManager,
   ModeManager* modeManager,
-  MonitorManager* monitorManager
+  MonitorManager* monitorManager,
+  DecorativeEffectManager* decorativeManager,
+  BrightnessManager* brightnessManager
 )
 {
   effects = effectManager;
   modes = modeManager;
   monitor = monitorManager;
+  decorative = decorativeManager;
+  brightness = brightnessManager;
 
   inputLength = 0;
   bufferOverflow = false;
@@ -90,6 +95,11 @@ void CommandParser::processLine(
     printError(
       "PARSER_NOT_INITIALIZED"
     );
+    return;
+  }
+
+  if (processCommand(line))
+  {
     return;
   }
 
@@ -572,6 +582,497 @@ void CommandParser::processLine(
 
   Serial.println(
     "ACK"
+  );
+}
+
+bool CommandParser::processCommand(
+  char* line
+)
+{
+  if (strcmp(line, "PING") == 0)
+  {
+    printOk();
+    return true;
+  }
+
+  if (strcmp(line, "GET_STATUS") == 0)
+  {
+    Serial.print("OK STATUS ");
+
+    Serial.print("MODE=");
+    Serial.print(
+      settingsStorage().getMode()
+    );
+
+    Serial.print(";EFFECT=");
+    Serial.print(
+      settingsStorage().
+        getDecorativeEffect()
+    );
+
+    Serial.print(";BRIGHTNESS=");
+    Serial.print(
+      settingsStorage().getBrightness()
+    );
+
+    Serial.print(";SPEED=");
+    Serial.print(
+      settingsStorage().
+        getDecorativeSpeed()
+    );
+
+    Serial.print(";COLOR=");
+    Serial.print(
+      settingsStorage().
+        getStaticColorIndex()
+    );
+
+    Serial.print(";CPUCOLOR=");
+    Serial.print(
+      monitor == nullptr
+        ? 0
+        : monitor->
+            getCpuGaugeColorIndex()
+    );
+
+    Serial.print(";STORAGECOLOR=");
+    Serial.println(
+      monitor == nullptr
+        ? 0
+        : monitor->
+            getStorageGaugeColorIndex()
+    );
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_MODE ",
+      9
+    ) == 0
+  )
+  {
+    if (modes == nullptr)
+    {
+      printCommandError(
+        "MODE_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 9;
+
+    SystemMode requestedMode;
+
+    if (
+      strcmp(
+        value,
+        "DECORATIVE"
+      ) == 0
+    )
+    {
+      requestedMode =
+        SystemMode::Decorative;
+    }
+    else if (
+      strcmp(
+        value,
+        "MONITOR"
+      ) == 0
+    )
+    {
+      requestedMode =
+        SystemMode::Monitor;
+    }
+    else if (
+      strcmp(
+        value,
+        "OFF"
+      ) == 0
+    )
+    {
+      requestedMode =
+        SystemMode::Off;
+    }
+    else
+    {
+      printCommandError(
+        "INVALID_MODE"
+      );
+
+      return true;
+    }
+
+    modes->setMode(
+      requestedMode
+    );
+
+    printOk();
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_EFFECT ",
+      11
+    ) == 0
+  )
+  {
+    if (decorative == nullptr)
+    {
+      printCommandError(
+        "DECORATIVE_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 11;
+    char* endPointer = nullptr;
+
+    const long effectIndex =
+      strtol(
+        value,
+        &endPointer,
+        10
+      );
+
+    if (
+      endPointer == value ||
+      *endPointer != '\0' ||
+      effectIndex < 0 ||
+      effectIndex > 16
+    )
+    {
+      printCommandError(
+        "INVALID_EFFECT"
+      );
+
+      return true;
+    }
+
+    decorative->setEffect(
+      static_cast<DecorativeEffectType>(
+        effectIndex
+      )
+    );
+
+    printOk();
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_BRIGHTNESS ",
+      15
+    ) == 0
+  )
+  {
+    if (brightness == nullptr)
+    {
+      printCommandError(
+        "BRIGHTNESS_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 15;
+    char* endPointer = nullptr;
+
+    const long brightnessValue =
+      strtol(
+        value,
+        &endPointer,
+        10
+      );
+
+    if (
+      endPointer == value ||
+      *endPointer != '\0' ||
+      brightnessValue < 10 ||
+      brightnessValue > 255
+    )
+    {
+      printCommandError(
+        "INVALID_BRIGHTNESS"
+      );
+
+      return true;
+    }
+
+    brightness->setBrightness(
+      static_cast<uint8_t>(
+        brightnessValue
+      )
+    );
+
+    settingsStorage().setBrightness(
+      static_cast<uint8_t>(
+        brightnessValue
+      )
+    );
+
+    printOk();
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_SPEED ",
+      10
+    ) == 0
+  )
+  {
+    if (decorative == nullptr)
+    {
+      printCommandError(
+        "DECORATIVE_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 10;
+    char* endPointer = nullptr;
+
+    const long speedValue =
+      strtol(
+        value,
+        &endPointer,
+        10
+      );
+
+    if (
+      endPointer == value ||
+      *endPointer != '\0' ||
+      speedValue < 1 ||
+      speedValue > 100
+    )
+    {
+      printCommandError(
+        "INVALID_SPEED"
+      );
+
+      return true;
+    }
+
+    decorative->setSpeed(
+      static_cast<uint8_t>(
+        speedValue
+      )
+    );
+
+    settingsStorage().
+      setDecorativeSpeed(
+        static_cast<uint8_t>(
+          speedValue
+        )
+      );
+
+    printOk();
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_COLOR ",
+      10
+    ) == 0
+  )
+  {
+    if (decorative == nullptr)
+    {
+      printCommandError(
+        "DECORATIVE_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 10;
+    char* endPointer = nullptr;
+
+    const long colorIndex =
+      strtol(
+        value,
+        &endPointer,
+        10
+      );
+
+    if (
+      endPointer == value ||
+      *endPointer != '\0' ||
+      colorIndex < 0 ||
+      colorIndex > 29
+    )
+    {
+      printCommandError(
+        "INVALID_COLOR"
+      );
+
+      return true;
+    }
+
+    decorative->setStaticColorIndex(
+      static_cast<uint8_t>(
+        colorIndex
+      )
+    );
+
+    printOk();
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_CPU_GAUGE_COLOR ",
+      20
+    ) == 0
+  )
+  {
+    if (monitor == nullptr)
+    {
+      printCommandError(
+        "MONITOR_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 20;
+    char* endPointer = nullptr;
+
+    const long colorIndex =
+      strtol(
+        value,
+        &endPointer,
+        10
+      );
+
+    if (
+      endPointer == value ||
+      *endPointer != '\0' ||
+      colorIndex < 0 ||
+      colorIndex >=
+        MonitorManager::THEME_COUNT
+    )
+    {
+      printCommandError(
+        "INVALID_CPU_GAUGE_COLOR"
+      );
+
+      return true;
+    }
+
+    monitor->
+      setCpuGaugeColorIndex(
+        static_cast<uint8_t>(
+          colorIndex
+        )
+      );
+
+    printOk();
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_STORAGE_GAUGE_COLOR ",
+      24
+    ) == 0
+  )
+  {
+    if (monitor == nullptr)
+    {
+      printCommandError(
+        "MONITOR_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 24;
+    char* endPointer = nullptr;
+
+    const long colorIndex =
+      strtol(
+        value,
+        &endPointer,
+        10
+      );
+
+    if (
+      endPointer == value ||
+      *endPointer != '\0' ||
+      colorIndex < 0 ||
+      colorIndex >=
+        MonitorManager::THEME_COUNT
+    )
+    {
+      printCommandError(
+        "INVALID_STORAGE_GAUGE_COLOR"
+      );
+
+      return true;
+    }
+
+    monitor->
+      setStorageGaugeColorIndex(
+        static_cast<uint8_t>(
+          colorIndex
+        )
+      );
+
+    printOk();
+
+    return true;
+  }
+
+  if (strchr(line, '=') == nullptr)
+  {
+    printCommandError(
+      "UNKNOWN_COMMAND"
+    );
+
+    return true;
+  }
+
+  return false;
+}
+
+void CommandParser::printOk() const
+{
+  Serial.println(
+    "OK"
+  );
+}
+
+void CommandParser::printCommandError(
+  const char* message
+) const
+{
+  Serial.print(
+    "ERROR:"
+  );
+
+  Serial.println(
+    message
   );
 }
 

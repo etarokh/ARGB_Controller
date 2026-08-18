@@ -5,6 +5,8 @@
 #include "EffectManager.h"
 #include "ModeManager.h"
 #include "MonitorManager.h"
+#include "DecorativeEffectManager.h"
+#include "BrightnessManager.h"
 
 class CommandParser
 {
@@ -12,7 +14,9 @@ public:
   void begin(
     EffectManager* effectManager,
     ModeManager* modeManager,
-    MonitorManager* monitorManager
+    MonitorManager* monitorManager,
+    DecorativeEffectManager* decorativeManager,
+    BrightnessManager* brightnessManager
   );
 
   void update();
@@ -23,12 +27,24 @@ private:
   EffectManager* effects = nullptr;
   ModeManager* modes = nullptr;
   MonitorManager* monitor = nullptr;
+  DecorativeEffectManager* decorative = nullptr;
+  BrightnessManager* brightness = nullptr;
 
   char inputBuffer[BUFFER_SIZE];
   size_t inputLength = 0;
   bool bufferOverflow = false;
 
   void processLine(char* line);
+
+  bool processCommand(
+    char* line
+  );
+
+  void printOk() const;
+
+  void printCommandError(
+    const char* message
+  ) const;
 
   bool parseState(
     const char* value,

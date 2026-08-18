@@ -71,6 +71,13 @@ public:
 
   void nextStaticColor();
 
+  void setStaticColorIndex(
+    uint8_t index
+  );
+
+  uint8_t
+  getStaticColorIndex() const;
+
   void nextPattern();
 
   const char* getPatternName() const;

@@ -228,6 +228,35 @@ void DecorativeEffectManager::nextStaticColor()
   );
 }
 
+void DecorativeEffectManager::setStaticColorIndex(
+  uint8_t index
+)
+{
+  staticColorEffect.setColorIndex(
+    index
+  );
+
+  settingsStorage().
+    setStaticColorIndex(
+      staticColorEffect.getColorIndex()
+    );
+
+  Serial.print(
+    "Static color: "
+  );
+
+  Serial.println(
+    staticColorEffect.getColorName()
+  );
+}
+
+uint8_t
+DecorativeEffectManager::
+getStaticColorIndex() const
+{
+  return staticColorEffect.getColorIndex();
+}
+
 void DecorativeEffectManager::nextPattern()
 {
   if (
