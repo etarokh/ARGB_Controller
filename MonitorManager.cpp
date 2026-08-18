@@ -82,6 +82,26 @@ void MonitorManager::begin(
       );
     }
 
+    baseGaugeColorIndex =
+      preferences.getUChar(
+        "baseColor",
+        themeIndex
+      );
+
+    if (
+      baseGaugeColorIndex >=
+        THEME_COUNT
+    )
+    {
+      baseGaugeColorIndex =
+        themeIndex;
+
+      preferences.putUChar(
+        "baseColor",
+        baseGaugeColorIndex
+      );
+    }
+
     cpuGaugeColorIndex =
       preferences.getUChar(
         "cpuColor",
@@ -115,6 +135,8 @@ void MonitorManager::begin(
     themeIndex = 0;
 
     storageGaugeColorIndex = 0;
+
+    baseGaugeColorIndex = 0;
 
     cpuGaugeColorIndex = 0;
 
@@ -499,6 +521,9 @@ void MonitorManager::setTheme(
   storageGaugeColorIndex =
     themeIndex;
 
+  baseGaugeColorIndex =
+    themeIndex;
+
   cpuGaugeColorIndex =
     themeIndex;
 
@@ -512,6 +537,11 @@ void MonitorManager::setTheme(
     preferences.putUChar(
       "storageColor",
       storageGaugeColorIndex
+    );
+
+    preferences.putUChar(
+      "baseColor",
+      baseGaugeColorIndex
     );
 
     preferences.putUChar(
@@ -535,6 +565,9 @@ void MonitorManager::nextTheme()
   storageGaugeColorIndex =
     themeIndex;
 
+  baseGaugeColorIndex =
+    themeIndex;
+
   cpuGaugeColorIndex =
     themeIndex;
 
@@ -548,6 +581,11 @@ void MonitorManager::nextTheme()
     preferences.putUChar(
       "storageColor",
       storageGaugeColorIndex
+    );
+
+    preferences.putUChar(
+      "baseColor",
+      baseGaugeColorIndex
     );
 
     preferences.putUChar(
