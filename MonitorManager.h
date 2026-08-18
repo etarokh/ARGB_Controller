@@ -81,6 +81,13 @@ public:
 
   uint8_t getStorageGaugeColorIndex() const;
 
+  void setBaseGaugeColorIndex(
+    uint8_t colorIndex
+  );
+
+  uint8_t
+  getBaseGaugeColorIndex() const;
+
   void setCpuGaugeColorIndex(
     uint8_t colorIndex
   );
@@ -143,6 +150,8 @@ private:
   uint8_t themeIndex = 0;
 
   uint8_t storageGaugeColorIndex = 0;
+
+  uint8_t baseGaugeColorIndex = 0;
 
   uint8_t cpuGaugeColorIndex = 0;
 

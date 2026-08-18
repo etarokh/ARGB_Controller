@@ -611,6 +611,44 @@ getStorageGaugeColorIndex() const
 }
 
 void MonitorManager::
+setBaseGaugeColorIndex(
+  uint8_t colorIndex
+)
+{
+  if (colorIndex >= THEME_COUNT)
+  {
+    return;
+  }
+
+  if (
+    baseGaugeColorIndex ==
+      colorIndex
+  )
+  {
+    return;
+  }
+
+  baseGaugeColorIndex =
+    colorIndex;
+
+  if (preferencesReady)
+  {
+    preferences.putUChar(
+      "baseColor",
+      baseGaugeColorIndex
+    );
+  }
+
+  needsRender = true;
+}
+
+uint8_t MonitorManager::
+getBaseGaugeColorIndex() const
+{
+  return baseGaugeColorIndex;
+}
+
+void MonitorManager::
 setCpuGaugeColorIndex(
   uint8_t colorIndex
 )
