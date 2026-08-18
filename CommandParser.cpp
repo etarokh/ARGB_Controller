@@ -627,6 +627,14 @@ bool CommandParser::processCommand(
         getStaticColorIndex()
     );
 
+    Serial.print(";BASECOLOR=");
+    Serial.print(
+      monitor == nullptr
+        ? 0
+        : monitor->
+            getBaseGaugeColorIndex()
+    );
+
     Serial.print(";CPUCOLOR=");
     Serial.print(
       monitor == nullptr
