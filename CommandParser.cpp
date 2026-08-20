@@ -651,6 +651,30 @@ bool CommandParser::processCommand(
             getStorageGaugeColorIndex()
     );
 
+    Serial.print(";BASEBRIGHTNESS=");
+    Serial.print(
+      monitor == nullptr
+        ? 255
+        : monitor->
+            getBaseBrightness()
+    );
+
+    Serial.print(";CPUBRIGHTNESS=");
+    Serial.print(
+      monitor == nullptr
+        ? 255
+        : monitor->
+            getCpuBrightness()
+    );
+
+    Serial.print(";STORAGEBRIGHTNESS=");
+    Serial.print(
+      monitor == nullptr
+        ? 255
+        : monitor->
+            getStorageBrightness()
+    );
+
     Serial.print(";PATTERN=");
     Serial.print(
       decorative == nullptr
@@ -1052,7 +1076,7 @@ bool CommandParser::processCommand(
       *endPointer != '\0' ||
       colorIndex < 0 ||
       colorIndex >=
-        MonitorManager::THEME_COUNT
+        MonitorManager::GAUGE_COLOR_COUNT
     )
     {
       printCommandError(
@@ -1106,7 +1130,7 @@ bool CommandParser::processCommand(
       *endPointer != '\0' ||
       colorIndex < 0 ||
       colorIndex >=
-        MonitorManager::THEME_COUNT
+        MonitorManager::GAUGE_COLOR_COUNT
     )
     {
       printCommandError(
@@ -1160,7 +1184,7 @@ bool CommandParser::processCommand(
       *endPointer != '\0' ||
       colorIndex < 0 ||
       colorIndex >=
-        MonitorManager::THEME_COUNT
+        MonitorManager::GAUGE_COLOR_COUNT
     )
     {
       printCommandError(
@@ -1176,6 +1200,234 @@ bool CommandParser::processCommand(
           colorIndex
         )
       );
+
+    printOk();
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_BASE_BRIGHTNESS ",
+      20
+    ) == 0
+  )
+  {
+    if (monitor == nullptr)
+    {
+      printCommandError(
+        "MONITOR_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 20;
+    char* endPointer = nullptr;
+
+    const long brightnessValue =
+      strtol(
+        value,
+        &endPointer,
+        10
+      );
+
+    if (
+      endPointer == value ||
+      *endPointer != '\0' ||
+      brightnessValue < 0 ||
+      brightnessValue > 255
+    )
+    {
+      printCommandError(
+        "INVALID_BASE_BRIGHTNESS"
+      );
+
+      return true;
+    }
+
+    monitor->setBaseBrightness(
+      static_cast<uint8_t>(
+        brightnessValue
+      )
+    );
+
+    printOk();
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_CPU_BRIGHTNESS ",
+      19
+    ) == 0
+  )
+  {
+    if (monitor == nullptr)
+    {
+      printCommandError(
+        "MONITOR_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 19;
+    char* endPointer = nullptr;
+
+    const long brightnessValue =
+      strtol(
+        value,
+        &endPointer,
+        10
+      );
+
+    if (
+      endPointer == value ||
+      *endPointer != '\0' ||
+      brightnessValue < 0 ||
+      brightnessValue > 255
+    )
+    {
+      printCommandError(
+        "INVALID_CPU_BRIGHTNESS"
+      );
+
+      return true;
+    }
+
+    monitor->setCpuBrightness(
+      static_cast<uint8_t>(
+        brightnessValue
+      )
+    );
+
+    printOk();
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_STORAGE_BRIGHTNESS ",
+      23
+    ) == 0
+  )
+  {
+    if (monitor == nullptr)
+    {
+      printCommandError(
+        "MONITOR_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 23;
+    char* endPointer = nullptr;
+
+    const long brightnessValue =
+      strtol(
+        value,
+        &endPointer,
+        10
+      );
+
+    if (
+      endPointer == value ||
+      *endPointer != '\0' ||
+      brightnessValue < 0 ||
+      brightnessValue > 255
+    )
+    {
+      printCommandError(
+        "INVALID_STORAGE_BRIGHTNESS"
+      );
+
+      return true;
+    }
+
+    monitor->setStorageBrightness(
+      static_cast<uint8_t>(
+        brightnessValue
+      )
+    );
+
+    printOk();
+
+    return true;
+  }
+
+  if (strcmp(line, "CLEAR_SNOOZE") == 0)
+  {
+    if (modes == nullptr)
+    {
+      printCommandError(
+        "MODE_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    modes->clearAlertSnooze();
+
+    printOk();
+
+    return true;
+  }
+
+  if (strcmp(line, "SNOOZE_24H") == 0)
+  {
+    if (modes == nullptr)
+    {
+      printCommandError(
+        "MODE_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    modes->snoozeAlertsFor24Hours();
+
+    printOk();
+
+    return true;
+  }
+
+  if (strcmp(line, "SNOOZE_30D") == 0)
+  {
+    if (modes == nullptr)
+    {
+      printCommandError(
+        "MODE_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    modes->snoozeAlertsFor30Days();
+
+    printOk();
+
+    return true;
+  }
+
+  if (strcmp(line, "SNOOZE_6M") == 0)
+  {
+    if (modes == nullptr)
+    {
+      printCommandError(
+        "MODE_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    modes->snoozeAlertsFor6Months();
 
     printOk();
 

@@ -8,6 +8,7 @@
 #include "DecorativeEffectManager.h"
 #include "MonitorManager.h"
 #include "BuzzerManager.h"
+#include "BrightnessManager.h"
 
 enum class SystemMode {
   Decorative,
@@ -23,7 +24,8 @@ public:
     EffectManager* monitoringManager,
     DecorativeEffectManager* decorativeManager,
     MonitorManager* monitorModeManager,
-    BuzzerManager* buzzerManager
+    BuzzerManager* buzzerManager,
+    BrightnessManager* brightnessManager
   );
 
   void update();
@@ -41,6 +43,7 @@ public:
   void snoozeAlertsFor24Hours();
   void snoozeAlertsFor30Days();
   void snoozeAlertsFor6Months();
+  void clearAlertSnooze();
 
   bool areAlertsSnoozed() const;
   uint8_t getSnoozedAlertMask() const;
@@ -56,6 +59,7 @@ private:
   DecorativeEffectManager* decorative = nullptr;
   MonitorManager* monitorManager = nullptr;
   BuzzerManager* buzzer = nullptr;
+  BrightnessManager* brightness = nullptr;
 
   Preferences preferences;
   bool preferencesReady = false;

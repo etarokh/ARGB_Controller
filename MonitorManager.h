@@ -20,6 +20,8 @@ class MonitorManager
 public:
   static constexpr uint8_t THEME_COUNT = 6;
 
+  static constexpr uint8_t GAUGE_COLOR_COUNT = 12;
+
   void begin(
     LedManager* ledManager
   );
@@ -94,6 +96,24 @@ public:
 
   uint8_t getCpuGaugeColorIndex() const;
 
+  void setBaseBrightness(
+    uint8_t brightness
+  );
+
+  uint8_t getBaseBrightness() const;
+
+  void setCpuBrightness(
+    uint8_t brightness
+  );
+
+  uint8_t getCpuBrightness() const;
+
+  void setStorageBrightness(
+    uint8_t brightness
+  );
+
+  uint8_t getStorageBrightness() const;
+
 private:
   LedManager* leds = nullptr;
 
@@ -154,6 +174,12 @@ private:
   uint8_t baseGaugeColorIndex = 0;
 
   uint8_t cpuGaugeColorIndex = 0;
+
+  uint8_t baseBrightness = 255;
+
+  uint8_t cpuBrightness = 255;
+
+  uint8_t storageBrightness = 255;
 
   void render();
 

@@ -70,7 +70,7 @@ void MonitorManager::begin(
 
     if (
       storageGaugeColorIndex >=
-        THEME_COUNT
+        GAUGE_COLOR_COUNT
     )
     {
       storageGaugeColorIndex =
@@ -90,7 +90,7 @@ void MonitorManager::begin(
 
     if (
       baseGaugeColorIndex >=
-        THEME_COUNT
+        GAUGE_COLOR_COUNT
     )
     {
       baseGaugeColorIndex =
@@ -110,7 +110,7 @@ void MonitorManager::begin(
 
     if (
       cpuGaugeColorIndex >=
-        THEME_COUNT
+        GAUGE_COLOR_COUNT
     )
     {
       cpuGaugeColorIndex =
@@ -121,6 +121,24 @@ void MonitorManager::begin(
         cpuGaugeColorIndex
       );
     }
+
+    baseBrightness =
+      preferences.getUChar(
+        "baseBright",
+        255
+      );
+
+    cpuBrightness =
+      preferences.getUChar(
+        "cpuBright",
+        255
+      );
+
+    storageBrightness =
+      preferences.getUChar(
+        "storageBright",
+        255
+      );
 
     Serial.print(
       "MONITOR THEME RESTORED: "
@@ -139,6 +157,12 @@ void MonitorManager::begin(
     baseGaugeColorIndex = 0;
 
     cpuGaugeColorIndex = 0;
+
+    baseBrightness = 255;
+
+    cpuBrightness = 255;
+
+    storageBrightness = 255;
 
     Serial.println(
       "MONITOR THEME: NVS unavailable"
@@ -615,7 +639,7 @@ setStorageGaugeColorIndex(
   uint8_t colorIndex
 )
 {
-  if (colorIndex >= THEME_COUNT)
+  if (colorIndex >= GAUGE_COLOR_COUNT)
   {
     return;
   }
@@ -653,7 +677,7 @@ setBaseGaugeColorIndex(
   uint8_t colorIndex
 )
 {
-  if (colorIndex >= THEME_COUNT)
+  if (colorIndex >= GAUGE_COLOR_COUNT)
   {
     return;
   }
@@ -691,7 +715,7 @@ setCpuGaugeColorIndex(
   uint8_t colorIndex
 )
 {
-  if (colorIndex >= THEME_COUNT)
+  if (colorIndex >= GAUGE_COLOR_COUNT)
   {
     return;
   }
@@ -722,6 +746,87 @@ uint8_t MonitorManager::
 getCpuGaugeColorIndex() const
 {
   return cpuGaugeColorIndex;
+}
+
+void MonitorManager::setBaseBrightness(
+  uint8_t brightness
+)
+{
+  if (baseBrightness == brightness)
+  {
+    return;
+  }
+
+  baseBrightness = brightness;
+
+  if (preferencesReady)
+  {
+    preferences.putUChar(
+      "baseBright",
+      baseBrightness
+    );
+  }
+
+  needsRender = true;
+}
+
+uint8_t MonitorManager::getBaseBrightness() const
+{
+  return baseBrightness;
+}
+
+void MonitorManager::setCpuBrightness(
+  uint8_t brightness
+)
+{
+  if (cpuBrightness == brightness)
+  {
+    return;
+  }
+
+  cpuBrightness = brightness;
+
+  if (preferencesReady)
+  {
+    preferences.putUChar(
+      "cpuBright",
+      cpuBrightness
+    );
+  }
+
+  needsRender = true;
+}
+
+uint8_t MonitorManager::getCpuBrightness() const
+{
+  return cpuBrightness;
+}
+
+void MonitorManager::setStorageBrightness(
+  uint8_t brightness
+)
+{
+  if (storageBrightness == brightness)
+  {
+    return;
+  }
+
+  storageBrightness = brightness;
+
+  if (preferencesReady)
+  {
+    preferences.putUChar(
+      "storageBright",
+      storageBrightness
+    );
+  }
+
+  needsRender = true;
+}
+
+uint8_t MonitorManager::getStorageBrightness() const
+{
+  return storageBrightness;
 }
 
 const char*
@@ -938,20 +1043,41 @@ void MonitorManager::render()
 
 void MonitorManager::renderSystemOverview()
 {
+  CRGB baseColor =
+    getBackgroundColor();
+
+  CRGB cpuColor =
+    getCpuColor();
+
+  CRGB storageColor =
+    getStorageColor();
+
+  baseColor.nscale8_video(
+    baseBrightness
+  );
+
+  cpuColor.nscale8_video(
+    cpuBrightness
+  );
+
+  storageColor.nscale8_video(
+    storageBrightness
+  );
+
   gaugeRenderer.render(
     leds->getHddLeds(),
     LED_COUNT_HDD,
     displayedStorageUsedPercent,
-    getStorageColor(),
-    getBackgroundColor()
+    storageColor,
+    baseColor
   );
 
   gaugeRenderer.render(
     leds->getCpuLeds(),
     LED_COUNT_CPU,
     displayedCpuUsagePercent,
-    getCpuColor(),
-    getBackgroundColor()
+    cpuColor,
+    baseColor
   );
 
   for (
@@ -1028,28 +1154,20 @@ getBackgroundColor() const
   switch (baseGaugeColorIndex)
   {
     case 0:
-      /*
-       * A softer white base gives the full-brightness
-       * red Gauge much clearer visual contrast.
-       */
-      return CRGB(
-        135,
-        135,
-        135
-      );
+      return CRGB::White;
 
     case 1:
       return CRGB(
-        10,
-        10,
-        18
+        90,
+        80,
+        255
       );
 
     case 2:
       return CRGB(
-        28,
+        180,
         0,
-        38
+        255
       );
 
     case 3:
@@ -1061,17 +1179,35 @@ getBackgroundColor() const
 
     case 4:
       return CRGB(
-        45,
-        24,
-        2
+        255,
+        110,
+        0
       );
 
     case 5:
       return CRGB(
-        2,
-        12,
-        8
+        0,
+        255,
+        130
       );
+
+    case 6:
+      return CRGB::Red;
+
+    case 7:
+      return CRGB::Orange;
+
+    case 8:
+      return CRGB::Gold;
+
+    case 9:
+      return CRGB::Green;
+
+    case 10:
+      return CRGB::Cyan;
+
+    case 11:
+      return CRGB::Blue;
 
     default:
       return CRGB::White;
@@ -1101,6 +1237,28 @@ getStorageColor() const
     case 5:
       return CRGB::Lime;
 
+    case 6:
+      return CRGB::White;
+
+    case 7:
+      return CRGB::Yellow;
+
+    case 8:
+      return CRGB::Green;
+
+    case 9:
+      return CRGB::DeepPink;
+
+    case 10:
+      return CRGB::HotPink;
+
+    case 11:
+      return CRGB(
+        190,
+        140,
+        255
+      );
+
     default:
       return CRGB::Red;
   }
@@ -1128,6 +1286,28 @@ getCpuColor() const
 
     case 5:
       return CRGB::Purple;
+
+    case 6:
+      return CRGB::White;
+
+    case 7:
+      return CRGB::Yellow;
+
+    case 8:
+      return CRGB::Green;
+
+    case 9:
+      return CRGB::DeepPink;
+
+    case 10:
+      return CRGB::HotPink;
+
+    case 11:
+      return CRGB(
+        190,
+        140,
+        255
+      );
 
     default:
       return CRGB::Blue;

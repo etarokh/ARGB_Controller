@@ -8,13 +8,15 @@ void ModeManager::begin(
   EffectManager* monitoringManager,
   DecorativeEffectManager* decorativeManager,
   MonitorManager* monitorModeManager,
-  BuzzerManager* buzzerManager
+  BuzzerManager* buzzerManager,
+  BrightnessManager* brightnessManager
 ) {
   leds = ledManager;
   monitoring = monitoringManager;
   decorative = decorativeManager;
   monitorManager = monitorModeManager;
   buzzer = buzzerManager;
+  brightness = brightnessManager;
 
   const uint8_t restoredMode =
     settingsStorage().getMode();
@@ -363,9 +365,6 @@ void ModeManager::snoozeCurrentAlertsFor(
 
   alertSnoozeUntilUnix = 0;
 
-  currentMode =
-    SystemMode::Decorative;
-
   alertOverrideActive = false;
 
   applyMode();
@@ -405,6 +404,41 @@ void ModeManager::snoozeAlertsFor6Months() {
     180ULL * 24ULL * 60ULL * 60ULL * 1000ULL,
     "6 months"
   );
+}
+
+void ModeManager::clearAlertSnooze() {
+  if (!alertSnoozeActive &&
+      snoozedAlertMask == 0) {
+    return;
+  }
+
+  clearStoredSnooze();
+
+  bool newAlertOverride = false;
+
+  if (monitoring != nullptr) {
+    newAlertOverride =
+      monitoring->getActiveAlertMask() != 0;
+  }
+
+  alertOverrideActive =
+    newAlertOverride;
+
+  applyMode();
+
+  Serial.println(
+    "Alert snooze: CLEARED"
+  );
+
+  if (alertOverrideActive) {
+    Serial.println(
+      "Alert override: ACTIVE"
+    );
+  } else {
+    Serial.println(
+      "Alert override: CLEARED"
+    );
+  }
 }
 
 bool ModeManager::areAlertsSnoozed() const {
@@ -460,6 +494,27 @@ void ModeManager::applyMode() {
 
   if (leds != nullptr) {
     leds->clear();
+  }
+
+  /*
+   * Monitor mode uses per-component brightness.
+   * Remove the global brightness ceiling while
+   * Monitor is active.
+   *
+   * Decorative and Alert modes restore the user's
+   * normal persisted global brightness.
+   */
+  if (leds != nullptr) {
+    if (
+      !alertOverrideActive &&
+      currentMode == SystemMode::Monitor
+    ) {
+      leds->setBrightness(255);
+    } else if (brightness != nullptr) {
+      leds->setBrightness(
+        brightness->getBrightness()
+      );
+    }
   }
 
   if (alertOverrideActive) {

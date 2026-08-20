@@ -159,7 +159,8 @@ void setup()
     &effects,
     &decorativeEffects,
     &monitorManager,
-    &buzzer
+    &buzzer,
+    &brightnessManager
   );
 
   settingsManager.begin();
