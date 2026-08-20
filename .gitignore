@@ -5,3 +5,8 @@ build/
 *.bin
 *.elf
 *.map
+
+# Local manual backups
+*.backup-*
+*.backup_*
+*.bak
