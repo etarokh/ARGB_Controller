@@ -690,11 +690,27 @@ bool CommandParser::processCommand(
     );
 
     Serial.print(";HASPATTERN=");
-    Serial.println(
+    Serial.print(
       decorative != nullptr &&
       decorative->hasPattern()
         ? 1
         : 0
+    );
+
+    Serial.print(";AUTOCYCLE=");
+    Serial.print(
+      decorative != nullptr &&
+      decorative->isAutoCycleEnabled()
+        ? 1
+        : 0
+    );
+
+    Serial.print(";AUTOCYCLEINTERVAL=");
+    Serial.println(
+      decorative == nullptr
+        ? 60
+        : decorative->
+            getAutoCycleIntervalSeconds()
     );
 
     return true;
@@ -869,6 +885,99 @@ bool CommandParser::processCommand(
         patternIndex
       )
     );
+
+    printOk();
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_AUTO_CYCLE ",
+      15
+    ) == 0
+  )
+  {
+    if (decorative == nullptr)
+    {
+      printCommandError(
+        "DECORATIVE_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 15;
+
+    if (
+      strcmp(value, "0") != 0 &&
+      strcmp(value, "1") != 0
+    )
+    {
+      printCommandError(
+        "INVALID_AUTO_CYCLE"
+      );
+
+      return true;
+    }
+
+    decorative->setAutoCycleEnabled(
+      strcmp(value, "1") == 0
+    );
+
+    printOk();
+
+    return true;
+  }
+
+  if (
+    strncmp(
+      line,
+      "SET_AUTO_CYCLE_INTERVAL ",
+      24
+    ) == 0
+  )
+  {
+    if (decorative == nullptr)
+    {
+      printCommandError(
+        "DECORATIVE_MANAGER_UNAVAILABLE"
+      );
+
+      return true;
+    }
+
+    const char* value = line + 24;
+    char* endPointer = nullptr;
+
+    const long intervalSeconds =
+      strtol(
+        value,
+        &endPointer,
+        10
+      );
+
+    if (
+      endPointer == value ||
+      *endPointer != '\0' ||
+      intervalSeconds < 60 ||
+      intervalSeconds > 3600
+    )
+    {
+      printCommandError(
+        "INVALID_AUTO_CYCLE_INTERVAL"
+      );
+
+      return true;
+    }
+
+    decorative->
+      setAutoCycleIntervalSeconds(
+        static_cast<uint16_t>(
+          intervalSeconds
+        )
+      );
 
     printOk();
 

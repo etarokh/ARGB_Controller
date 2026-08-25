@@ -139,8 +139,30 @@ public:
 
   void clear();
 
+  void setAutoCycleEnabled(
+    bool enabled
+  );
+
+  bool isAutoCycleEnabled() const;
+
+  void setAutoCycleIntervalSeconds(
+    uint16_t seconds
+  );
+
+  uint16_t getAutoCycleIntervalSeconds() const;
+
 private:
   static constexpr uint8_t EFFECT_COUNT = 17;
+
+  void updateAutoCycle();
+
+  void advanceAutoCycle();
+
+  bool autoCycleEnabled = false;
+
+  uint16_t autoCycleIntervalSeconds = 60;
+
+  unsigned long autoCycleLastChangeMs = 0;
 
   void selectCurrentEffect();
 

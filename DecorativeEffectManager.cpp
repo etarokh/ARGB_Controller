@@ -127,7 +127,130 @@ void DecorativeEffectManager::update()
   }
 
   currentEffect->update();
+
+  updateAutoCycle();
 }
+
+void DecorativeEffectManager::setAutoCycleEnabled(
+  bool newEnabled
+)
+{
+  autoCycleEnabled = newEnabled;
+
+  autoCycleLastChangeMs = millis();
+
+  Serial.print(
+    "Decorative auto cycle: "
+  );
+
+  Serial.println(
+    autoCycleEnabled
+      ? "ON"
+      : "OFF"
+  );
+}
+
+
+bool DecorativeEffectManager::
+isAutoCycleEnabled() const
+{
+  return autoCycleEnabled;
+}
+
+
+void DecorativeEffectManager::
+setAutoCycleIntervalSeconds(
+  uint16_t seconds
+)
+{
+  if (seconds < 60)
+  {
+    seconds = 60;
+  }
+
+  autoCycleIntervalSeconds = seconds;
+
+  autoCycleLastChangeMs = millis();
+}
+
+
+uint16_t DecorativeEffectManager::
+getAutoCycleIntervalSeconds() const
+{
+  return autoCycleIntervalSeconds;
+}
+
+
+void DecorativeEffectManager::updateAutoCycle()
+{
+  if (!autoCycleEnabled)
+  {
+    return;
+  }
+
+  const unsigned long now =
+    millis();
+
+  const unsigned long intervalMs =
+    static_cast<unsigned long>(
+      autoCycleIntervalSeconds
+    ) * 1000UL;
+
+  if (
+    now - autoCycleLastChangeMs <
+      intervalMs
+  )
+  {
+    return;
+  }
+
+  autoCycleLastChangeMs = now;
+
+  advanceAutoCycle();
+}
+
+
+void DecorativeEffectManager::advanceAutoCycle()
+{
+  const uint8_t patternCount =
+    getPatternCount();
+
+  if (patternCount > 0)
+  {
+    const uint8_t currentPattern =
+      getPattern();
+
+    if (
+      currentPattern + 1 <
+        patternCount
+    )
+    {
+      setPattern(
+        currentPattern + 1
+      );
+
+      if (currentEffect != nullptr)
+      {
+        currentEffect->reset();
+      }
+
+      return;
+    }
+  }
+
+  nextEffect();
+
+  if (getPatternCount() > 0)
+  {
+    setPattern(0);
+
+    if (currentEffect != nullptr)
+    {
+      currentEffect->reset();
+    }
+  }
+}
+
 
 void DecorativeEffectManager::setEnabled(
   bool newEnabled
