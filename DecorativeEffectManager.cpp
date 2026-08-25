@@ -453,6 +453,7 @@ uint8_t DecorativeEffectManager::getPatternCount() const
       return 5;
 
     case DecorativeEffectType::SpectrumWave:
+      return 5;
     
     
     case DecorativeEffectType::LavaLamp:

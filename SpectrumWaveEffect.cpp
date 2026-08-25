@@ -41,6 +41,9 @@ SpectrumWaveEffect::getPatternName() const
     case 3:
       return "Diagonal Flow";
 
+    case 4:
+      return "Synced Spectrum";
+
     default:
       return "Unknown";
   }
@@ -144,6 +147,14 @@ calculateHueOffset(
         (
           ledIndex * 21
         )
+      );
+
+    case 4:
+      // Synced Spectrum:
+      // All LED groups use the same phase.
+      // The group index is intentionally ignored.
+      return static_cast<uint8_t>(
+        ledIndex * 12
       );
 
     default:
