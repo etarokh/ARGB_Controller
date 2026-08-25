@@ -133,6 +133,35 @@ uint8_t OceanWaveEffect::getSpeed() const
   return speed;
 }
 
+void OceanWaveEffect::nextPattern()
+{
+  patternIndex =
+    (patternIndex + 1) % PATTERN_COUNT;
+
+  Serial.print("Ocean Wave pattern: ");
+  Serial.println(getPatternName());
+}
+
+uint8_t OceanWaveEffect::getPattern() const
+{
+  return patternIndex;
+}
+
+const char* OceanWaveEffect::getPatternName() const
+{
+  switch (patternIndex)
+  {
+    case 0:
+      return "Flowing Ocean";
+
+    case 1:
+      return "Synced Ocean";
+
+    default:
+      return "Unknown";
+  }
+}
+
 void OceanWaveEffect::updateIntervalFromSpeed()
 {
   updateInterval =
@@ -196,78 +225,87 @@ void OceanWaveEffect::render()
     return;
   }
 
-  /*
-    The four groups are positioned
-    across the wave path.
-  */
+  if (patternIndex == 1)
+  {
+    const uint8_t syncedBrightness =
+      calculateWaveBrightness(0);
 
-  const uint8_t hddWavePosition = 0;
+    const CRGB syncedColor =
+      palette->getColor(
+        palettePosition,
+        syncedBrightness
+      );
 
-  const uint8_t intakeWavePosition = 85;
-
-  const uint8_t exhaustWavePosition = 170;
-
-  const uint8_t cpuWavePosition = 255;
-
-  uint8_t hddBrightness =
-    calculateWaveBrightness(
-      hddWavePosition
+    leds->setHdd(
+      syncedColor
     );
 
-  uint8_t intakeBrightness =
-    calculateWaveBrightness(
-      intakeWavePosition
+    leds->setIntake(
+      syncedColor
     );
 
-  uint8_t exhaustBrightness =
-    calculateWaveBrightness(
-      exhaustWavePosition
+    leds->setExhaust(
+      syncedColor
     );
 
-  uint8_t cpuBrightness =
-    calculateWaveBrightness(
-      cpuWavePosition
+    leds->setCpu(
+      syncedColor
+    );
+  }
+  else
+  {
+    const uint8_t hddBrightness =
+      calculateWaveBrightness(0);
+
+    const uint8_t intakeBrightness =
+      calculateWaveBrightness(85);
+
+    const uint8_t exhaustBrightness =
+      calculateWaveBrightness(170);
+
+    const uint8_t cpuBrightness =
+      calculateWaveBrightness(255);
+
+    const CRGB hddColor =
+      palette->getColor(
+        palettePosition,
+        hddBrightness
+      );
+
+    const CRGB intakeColor =
+      palette->getColor(
+        palettePosition + 18,
+        intakeBrightness
+      );
+
+    const CRGB exhaustColor =
+      palette->getColor(
+        palettePosition + 36,
+        exhaustBrightness
+      );
+
+    const CRGB cpuColor =
+      palette->getColor(
+        palettePosition + 54,
+        cpuBrightness
+      );
+
+    leds->setHdd(
+      hddColor
     );
 
-  CRGB hddColor =
-    palette->getColor(
-      palettePosition,
-      hddBrightness
+    leds->setIntake(
+      intakeColor
     );
 
-  CRGB intakeColor =
-    palette->getColor(
-      palettePosition + 18,
-      intakeBrightness
+    leds->setExhaust(
+      exhaustColor
     );
 
-  CRGB exhaustColor =
-    palette->getColor(
-      palettePosition + 36,
-      exhaustBrightness
+    leds->setCpu(
+      cpuColor
     );
-
-  CRGB cpuColor =
-    palette->getColor(
-      palettePosition + 54,
-      cpuBrightness
-    );
-
-  leds->setHdd(
-    hddColor
-  );
-
-  leds->setIntake(
-    intakeColor
-  );
-
-  leds->setExhaust(
-    exhaustColor
-  );
-
-  leds->setCpu(
-    cpuColor
-  );
+  }
 
   leds->show();
 }

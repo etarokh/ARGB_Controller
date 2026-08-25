@@ -33,6 +33,13 @@ public:
 
   uint8_t getSpeed() const;
 
+
+
+  void nextPattern();
+
+  uint8_t getPattern() const;
+
+  const char* getPatternName() const;
 private:
   void render();
 
@@ -52,6 +59,11 @@ private:
 
   uint8_t speed = 50;
 
+  
+
+  static constexpr uint8_t PATTERN_COUNT = 2;
+
+  uint8_t patternIndex = 0;
   uint16_t updateInterval = 30;
 
   unsigned long lastUpdateTime = 0;

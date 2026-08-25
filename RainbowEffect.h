@@ -8,6 +8,13 @@
 class RainbowEffect :
   public AnimatedHueEffect
 {
+public:
+  void nextPattern();
+
+  uint8_t getPattern() const;
+
+  const char* getPatternName() const;
+
 protected:
   void renderFrame() override;
 
@@ -21,4 +28,10 @@ protected:
   {
     return 1;
   }
+
+private:
+  static constexpr uint8_t
+    PATTERN_COUNT = 2;
+
+  uint8_t patternIndex = 0;
 };

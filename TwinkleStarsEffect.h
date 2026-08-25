@@ -33,7 +33,7 @@ protected:
 
 private:
   static constexpr uint8_t
-    PATTERN_COUNT = 4;
+    PATTERN_COUNT = 5;
 
   uint8_t patternIndex = 0;
 

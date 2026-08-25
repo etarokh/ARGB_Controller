@@ -43,6 +43,9 @@ TwinkleStarsEffect::getPatternName() const
     case 3:
       return "Slow Dream";
 
+    case 4:
+      return "Synced Stars";
+
     default:
       return "Unknown";
   }
@@ -82,6 +85,9 @@ getFadeAmount() const
     case 3:
       return 10;
 
+    case 4:
+      return 28;
+
     default:
       return 28;
   }
@@ -103,6 +109,9 @@ getSpawnChance() const
 
     case 3:
       return 42;
+
+    case 4:
+      return 70;
 
     default:
       return 70;
@@ -126,6 +135,9 @@ getStarsPerFrame() const
     case 3:
       return 1;
 
+    case 4:
+      return 1;
+
     default:
       return 1;
   }
@@ -147,6 +159,9 @@ getMinimumBrightness() const
 
     case 3:
       return 100;
+
+    case 4:
+      return 150;
 
     default:
       return 150;
@@ -241,9 +256,26 @@ void TwinkleStarsEffect::createRandomStars()
 
     // Every output represents one complete fan group.
     // Light the entire group instead of one LED.
-    fillGroup(
-      groupIndex,
-      starColor
-    );
+    if (patternIndex == 4)
+    {
+      for (
+        uint8_t syncedGroup = 0;
+        syncedGroup < GROUP_COUNT;
+        syncedGroup++
+      )
+      {
+        fillGroup(
+          syncedGroup,
+          starColor
+        );
+      }
+    }
+    else
+    {
+      fillGroup(
+        groupIndex,
+        starColor
+      );
+    }
   }
 }

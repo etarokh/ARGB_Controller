@@ -41,6 +41,9 @@ GradientFlowEffect::getPatternName() const
     case 3:
       return "Mirror Flow";
 
+    case 4:
+      return "Synced Flow";
+
     default:
       return "Unknown";
   }
@@ -156,6 +159,13 @@ calculateHueOffset(
         )
       );
     }
+
+    case 4:
+      // Synced Flow:
+      // Every group uses the same per-pixel hue progression.
+      return static_cast<uint8_t>(
+        ledIndex * 5
+      );
 
     default:
       return 0;

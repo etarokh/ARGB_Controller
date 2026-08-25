@@ -102,6 +102,35 @@ void AuroraEffect::setSpeed(
   updateIntervalFromSpeed();
 }
 
+void AuroraEffect::nextPattern()
+{
+  patternIndex =
+    (patternIndex + 1) % PATTERN_COUNT;
+
+  Serial.print("Aurora pattern: ");
+  Serial.println(getPatternName());
+}
+
+uint8_t AuroraEffect::getPattern() const
+{
+  return patternIndex;
+}
+
+const char* AuroraEffect::getPatternName() const
+{
+  switch (patternIndex)
+  {
+    case 0:
+      return "Flowing Aurora";
+
+    case 1:
+      return "Synced Aurora";
+
+    default:
+      return "Unknown";
+  }
+}
+
 uint8_t AuroraEffect::getSpeed() const
 {
   return speed;
@@ -152,65 +181,87 @@ void AuroraEffect::render()
     return;
   }
 
-  /*
-    Each group uses a nearby palette
-    position to create a flowing aurora.
+  if (patternIndex == 1)
+  {
+    const uint8_t syncedBrightness =
+      calculateBrightness(0);
 
-    Brightness waves are separated
-    across the four groups.
-  */
+    const CRGB syncedColor =
+      palette->getColor(
+        palettePosition,
+        syncedBrightness
+      );
 
-  uint8_t hddBrightness =
-    calculateBrightness(0);
-
-  uint8_t intakeBrightness =
-    calculateBrightness(48);
-
-  uint8_t exhaustBrightness =
-    calculateBrightness(96);
-
-  uint8_t cpuBrightness =
-    calculateBrightness(144);
-
-  CRGB hddColor =
-    palette->getColor(
-      palettePosition,
-      hddBrightness
+    leds->setHdd(
+      syncedColor
     );
 
-  CRGB intakeColor =
-    palette->getColor(
-      palettePosition + 28,
-      intakeBrightness
+    leds->setIntake(
+      syncedColor
     );
 
-  CRGB exhaustColor =
-    palette->getColor(
-      palettePosition + 56,
-      exhaustBrightness
+    leds->setExhaust(
+      syncedColor
     );
 
-  CRGB cpuColor =
-    palette->getColor(
-      palettePosition + 84,
-      cpuBrightness
+    leds->setCpu(
+      syncedColor
+    );
+  }
+  else
+  {
+    const uint8_t hddBrightness =
+      calculateBrightness(0);
+
+    const uint8_t intakeBrightness =
+      calculateBrightness(48);
+
+    const uint8_t exhaustBrightness =
+      calculateBrightness(96);
+
+    const uint8_t cpuBrightness =
+      calculateBrightness(144);
+
+    const CRGB hddColor =
+      palette->getColor(
+        palettePosition,
+        hddBrightness
+      );
+
+    const CRGB intakeColor =
+      palette->getColor(
+        palettePosition + 28,
+        intakeBrightness
+      );
+
+    const CRGB exhaustColor =
+      palette->getColor(
+        palettePosition + 56,
+        exhaustBrightness
+      );
+
+    const CRGB cpuColor =
+      palette->getColor(
+        palettePosition + 84,
+        cpuBrightness
+      );
+
+    leds->setHdd(
+      hddColor
     );
 
-  leds->setHdd(
-    hddColor
-  );
+    leds->setIntake(
+      intakeColor
+    );
 
-  leds->setIntake(
-    intakeColor
-  );
+    leds->setExhaust(
+      exhaustColor
+    );
 
-  leds->setExhaust(
-    exhaustColor
-  );
-
-  leds->setCpu(
-    cpuColor
-  );
+    leds->setCpu(
+      cpuColor
+    );
+  }
 
   leds->show();
 }

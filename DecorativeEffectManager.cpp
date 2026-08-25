@@ -389,6 +389,9 @@ uint8_t DecorativeEffectManager::getPattern() const
 {
   switch (currentEffectType)
   {
+    case DecorativeEffectType::Rainbow:
+      return rainbowEffect.getPattern();
+
     case DecorativeEffectType::SpectrumWave:
       return spectrumWaveEffect.getPattern();
 
@@ -415,6 +418,12 @@ uint8_t DecorativeEffectManager::getPattern() const
 
     case DecorativeEffectType::GroupFillWave:
       return groupFillWaveEffect.getPattern();
+    case DecorativeEffectType::Aurora:
+      return auroraEffect.getPattern();
+
+    case DecorativeEffectType::OceanWave:
+      return oceanWaveEffect.getPattern();
+
 
     case DecorativeEffectType::AlternatingStatic:
       return alternatingStaticEffect.getPattern();
@@ -428,11 +437,26 @@ uint8_t DecorativeEffectManager::getPatternCount() const
 {
   switch (currentEffectType)
   {
-    case DecorativeEffectType::SpectrumWave:
+    case DecorativeEffectType::Rainbow:
+      return 2;
+
+    
     case DecorativeEffectType::TwinkleStars:
+      return 5;
+
+    
     case DecorativeEffectType::GradientFlow:
-    case DecorativeEffectType::LavaLamp:
+      return 5;
+
+    
     case DecorativeEffectType::Plasma:
+      return 5;
+
+    case DecorativeEffectType::SpectrumWave:
+    
+    
+    case DecorativeEffectType::LavaLamp:
+    
     case DecorativeEffectType::Fire:
     case DecorativeEffectType::Nebula:
     case DecorativeEffectType::GroupFillWave:
@@ -440,6 +464,12 @@ uint8_t DecorativeEffectManager::getPatternCount() const
 
     case DecorativeEffectType::RowLedSync:
       return 10;
+    case DecorativeEffectType::Aurora:
+      return 2;
+
+    case DecorativeEffectType::OceanWave:
+      return 2;
+
 
     case DecorativeEffectType::AlternatingStatic:
       return 12;
@@ -499,6 +529,10 @@ void DecorativeEffectManager::setPattern(
 
     switch (currentEffectType)
     {
+      case DecorativeEffectType::Rainbow:
+        rainbowEffect.nextPattern();
+        break;
+
       case DecorativeEffectType::SpectrumWave:
         spectrumWaveEffect.nextPattern();
         break;
@@ -530,6 +564,14 @@ void DecorativeEffectManager::setPattern(
       case DecorativeEffectType::GroupFillWave:
         groupFillWaveEffect.nextPattern();
         break;
+      case DecorativeEffectType::Aurora:
+        auroraEffect.nextPattern();
+        break;
+
+      case DecorativeEffectType::OceanWave:
+        oceanWaveEffect.nextPattern();
+        break;
+
 
       case DecorativeEffectType::AlternatingStatic:
         alternatingStaticEffect.nextPattern();
@@ -560,6 +602,15 @@ void DecorativeEffectManager::nextPattern()
 
     return;
   }
+  if (
+    currentEffectType ==
+      DecorativeEffectType::Rainbow
+  )
+  {
+    rainbowEffect.nextPattern();
+    return;
+  }
+
 
   if (
     currentEffectType ==
@@ -632,6 +683,25 @@ void DecorativeEffectManager::nextPattern()
     groupFillWaveEffect.nextPattern();
     return;
   }
+  if (
+    currentEffectType ==
+      DecorativeEffectType::Aurora
+  )
+  {
+    auroraEffect.nextPattern();
+    return;
+  }
+
+  if (
+    currentEffectType ==
+      DecorativeEffectType::OceanWave
+  )
+  {
+    oceanWaveEffect.nextPattern();
+    return;
+  }
+
+
 
   if (
     currentEffectType ==
@@ -652,6 +722,14 @@ DecorativeEffectManager::getPatternName() const
   {
     return rowLedSyncEffect.getPatternName();
   }
+  if (
+    currentEffectType ==
+      DecorativeEffectType::Rainbow
+  )
+  {
+    return rainbowEffect.getPatternName();
+  }
+
 
   if (
     currentEffectType ==
@@ -716,6 +794,23 @@ DecorativeEffectManager::getPatternName() const
   {
     return groupFillWaveEffect.getPatternName();
   }
+  if (
+    currentEffectType ==
+      DecorativeEffectType::Aurora
+  )
+  {
+    return auroraEffect.getPatternName();
+  }
+
+  if (
+    currentEffectType ==
+      DecorativeEffectType::OceanWave
+  )
+  {
+    return oceanWaveEffect.getPatternName();
+  }
+
+
 
   if (
     currentEffectType ==

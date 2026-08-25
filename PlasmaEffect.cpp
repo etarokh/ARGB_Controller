@@ -30,6 +30,9 @@ const char* PlasmaEffect::getPatternName() const
     case 3:
       return "Mirror Plasma";
 
+    case 4:
+      return "Synced Plasma";
+
     default:
       return "Unknown";
   }
@@ -52,19 +55,32 @@ void PlasmaEffect::renderFrame()
       ledIndex++
     )
     {
+      const bool synced =
+        patternIndex == 4;
+
       const uint8_t waveOne =
-        sin8(
-          baseHue * 3 +
-          group * 47 +
-          ledIndex * 29
-        );
+        synced
+          ? sin8(
+              baseHue * 3 +
+              ledIndex * 29
+            )
+          : sin8(
+              baseHue * 3 +
+              group * 47 +
+              ledIndex * 29
+            );
 
       const uint8_t waveTwo =
-        cos8(
-          baseHue * 2 +
-          group * 71 -
-          ledIndex * 17
-        );
+        synced
+          ? cos8(
+              baseHue * 2 -
+              ledIndex * 17
+            )
+          : cos8(
+              baseHue * 2 +
+              group * 71 -
+              ledIndex * 17
+            );
 
       const uint8_t combined =
         static_cast<uint8_t>(
@@ -99,7 +115,6 @@ void PlasmaEffect::renderFrame()
           break;
 
         case 3:
-        default:
         {
           const uint8_t mirroredGroup =
             group < 2
@@ -113,6 +128,16 @@ void PlasmaEffect::renderFrame()
             );
           break;
         }
+
+        case 4:
+          // Fully synchronized plasma:
+          // group index does not affect phase or hue.
+          hueOffset = combined;
+          break;
+
+        default:
+          hueOffset = combined;
+          break;
       }
 
       setGroupPixel(
