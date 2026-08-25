@@ -364,42 +364,6 @@ void ButtonRouter::handleDecorativeContext(
   const uint8_t pressNumber =
     button->getCurrentPressNumber();
 
-  static unsigned long lastDebug = 0;
-
-  if (millis() - lastDebug >= 200)
-  {
-    lastDebug = millis();
-
-    Serial.print("P=");
-    Serial.print(currentlyPressed);
-
-    Serial.print(" H=");
-    Serial.print(holdDuration);
-
-    Serial.print(" N=");
-    Serial.print(pressNumber);
-
-    Serial.print(" A=");
-    Serial.println(
-      static_cast<int>(
-        decorativeAdjustment
-      )
-    );
-  }
-
-  Serial.print("pressed=");
-  Serial.print(currentlyPressed);
-  Serial.print(" hold=");
-  Serial.print(holdDuration);
-  Serial.print(" press=");
-  Serial.print(pressNumber);
-  Serial.print(" adj=");
-  Serial.println(
-    static_cast<int>(
-      decorativeAdjustment
-    )
-  );
-
   updateBrightnessAdjustment(
     decorativeBrightnessAdjusting,
     "Decorative"
@@ -455,7 +419,6 @@ void ButtonRouter::handleDecorativeContext(
     currentlyPressed
   )
   {
-    Serial.println(">>> SPEED LOOP <<<");
     const unsigned long now =
       millis();
 
